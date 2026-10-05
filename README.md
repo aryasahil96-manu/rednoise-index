@@ -71,12 +71,6 @@ The centered guide dialog contains **Overview**, **How to use**, and **Disclaime
 4. Switch to **Defender View** to inspect the illustrative timeline and response estimates.
 5. Use **Review safer test options** to see benign, scoped validation approaches.
 
-## Hosting
-
-The live site is hosted on [GitHub Pages](https://aryasahil96-manu.github.io/rednoise-index/) from the repository’s `main` branch and root folder (`/(root)`). GitHub Free includes Pages for public repositories; this setup does not require a paid plan, custom domain, or subscription. A custom domain is optional and may have a separate registrar cost. See [GitHub Pages setup](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) and [GitHub’s plan features](https://docs.github.com/en/get-started/learning-about-github/githubs-plans).
-
-GitHub Pages is intended for personal and project showcases, not for running an online business, e-commerce site, or commercial SaaS. See [GitHub Pages terms](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features).
-
 ## Accuracy, safety, and privacy
 
 - Use this planner only for authorized, scoped assessment planning.
@@ -92,7 +86,3 @@ The catalog uses MITRE ATT&CK® identifiers and mappings. **© 2026 The MITRE Co
 ## Suggestions and proposed changes
 
 Suggestions, corrections, feature ideas, and proposed modifications are welcome. After the repository is published, open an Issue with the relevant feature and the change you would like to see, or contact me through [LinkedIn](https://www.linkedin.com/in/sahil-arya-20585b159/). Pull requests with proposed changes are also welcome for review; please do not include confidential client, host, or assessment details.
-
-## Project license
-
-No project license file is currently included. The repository can be public without an open-source license; public visibility lets people view and fork it on GitHub but does not grant general permission to reuse or redistribute the code. The MITRE attribution above applies to the referenced ATT&CK material, not as a license for the RedNoiseIndex project.
