@@ -372,7 +372,9 @@ select option { background:#18212c; color:var(--text); }
   .env-grid { grid-template-columns:1fr 1fr; }
   .tcard-body,.dim-bars,.card-dims { grid-template-columns:1fr; }
   .tcard-col+.tcard-col { border-left:none; border-top:1px solid var(--border); }
-  .signal-row { flex-direction:column; align-items:flex-start; }
+  .signal-row { position:relative; flex-direction:row; align-items:center; padding-bottom:24px; }
+  .signal-score { text-align:center; flex:0 0 auto; }
+  .signal-effective { position:absolute; left:0; bottom:0; margin:0; text-align:left; }
   .sel-phase { width:120px; }
 }
 @media(max-width:460px) {
