@@ -2,6 +2,8 @@
 
 RedNoiseIndex is a single-page, browser-based planning aid for authorized red-team exercises. It helps security teams discuss how a selected sequence of techniques might appear across endpoint, network, identity, and forensic sensors in a chosen environment—and how a defender might review the resulting telemetry.
 
+**Live site:** [Open RedNoiseIndex](https://aryasahil96-manu.github.io/rednoise-index/)
+
 It is a planning and discussion tool. It does not execute techniques, scan targets, or make live security checks.
 
 ## What it includes
