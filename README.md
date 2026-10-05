@@ -69,11 +69,9 @@ The centered guide dialog contains **Overview**, **How to use**, and **Disclaime
 4. Switch to **Defender View** to inspect the illustrative timeline and response estimates.
 5. Use **Review safer test options** to see benign, scoped validation approaches.
 
-## Run locally or host it
+## Hosting
 
-Open `index.html` in a modern browser to run the single-file page locally. The app’s calculations run in the browser and do not require an application backend.
-
-GitHub Pages can publish this as a project site from the repository’s `main` branch and root folder (`/(root)`). GitHub Free includes Pages for public repositories; this setup does not require a paid plan, custom domain, or subscription. A custom domain is optional and may have a separate registrar cost. See [GitHub Pages setup](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) and [GitHub’s plan features](https://docs.github.com/en/get-started/learning-about-github/githubs-plans).
+The live site is hosted on [GitHub Pages](https://aryasahil96-manu.github.io/rednoise-index/) from the repository’s `main` branch and root folder (`/(root)`). GitHub Free includes Pages for public repositories; this setup does not require a paid plan, custom domain, or subscription. A custom domain is optional and may have a separate registrar cost. See [GitHub Pages setup](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site) and [GitHub’s plan features](https://docs.github.com/en/get-started/learning-about-github/githubs-plans).
 
 GitHub Pages is intended for personal and project showcases, not for running an online business, e-commerce site, or commercial SaaS. See [GitHub Pages terms](https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features).
 
