@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="A local planning aid for authorized red-team exercises, comparing illustrative endpoint, network, identity, and forensic signals.">
+<title>RedNoiseIndex — Red Team Security Assessment Estimator</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:       #0b0f14;
+  --card:     #111821;
+  --row:      #18212c;
+  --border:   #263241;
+  --bhi:      #39495d;
+  --text:     #e6edf3;
+  --dim:      #adbac7;
+  --muted:    #8b98a9;
+  --ghost:    #818cf8;
+  --quiet:    #22c55e;
+  --mod:      #eab308;
+  --loud:     #f97316;
+  --scream:   #ef4444;
+  --debt-lo:  #22c55e;
+  --debt-md:  #eab308;
+  --debt-hi:  #ef4444;
+  --mono: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top,0px);
+  padding-bottom: env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after { box-sizing:inherit; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; min-height:100vh; }
+
+/* ── header ── */
+.hdr { display:flex; align-items:center; gap:12px; padding:12px 24px;
+  border-bottom:1px solid var(--border); position:sticky; top:env(safe-area-inset-top,0);
+  background:rgba(11,15,20,.97); backdrop-filter:blur(10px); z-index:100; }
+.logo { font-family:var(--mono); font-size:14px; font-weight:700; color:#fff; }
+.logo em { color:var(--scream); font-style:normal; }
+.logo-sep { color:var(--muted); margin:0 6px; }
+.hdr-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.profile-mark { position:relative; display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border:1px solid rgba(129,140,248,.42); border-radius:50%; background:linear-gradient(145deg,rgba(129,140,248,.2),rgba(17,24,33,.96)); color:#e6edf3; text-decoration:none; transition:transform .18s,border-color .18s,box-shadow .18s; }
+.profile-mark:hover { transform:translateY(-1px); border-color:#a5b4fc; box-shadow:0 0 0 3px rgba(129,140,248,.12); }
+.profile-mark:focus-visible { outline:2px solid #a5b4fc; outline-offset:3px; }
+.profile-initials { font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:.02em; }
+.profile-in { position:absolute; right:-3px; bottom:-2px; display:grid; place-items:center; width:17px; height:17px; border:2px solid var(--bg); border-radius:5px; background:#0a66c2; color:#fff; font-family:Arial,sans-serif; font-size:9px; font-weight:700; line-height:1; }.badge { font-family:var(--mono); font-size:10px; color:var(--muted);
+  border:1px solid var(--border); padding:2px 8px; border-radius:4px; }
+
+/* ── tabs ── */
+.tabs { display:flex; gap:0; border-bottom:1px solid var(--border);
+  background:var(--card); position:sticky; top:45px; z-index:90; }
+.tab { appearance:none; padding:10px 20px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--dim); font:600 14px/1.4 var(--sans); text-align:left;
+  cursor:pointer; transition:all .15s; user-select:none; }
+.tab.active { color:var(--text); border-bottom-color:var(--ghost); }
+.tab:focus-visible { outline:2px solid #a5b4fc; outline-offset:-4px; }
+.tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,.03); }
+
+.method-note,.fit-note { font-size:13px; line-height:1.6; }
+.method-note { color:var(--dim); margin:0 0 12px; padding:0 2px; }
+.fit-note { color:#fbbf24; padding:8px 12px; background:rgba(234,179,8,.08); border-bottom:1px solid var(--border); }
+/* ── wrap ── */
+.wrap { max-width:1600px; margin:0 auto; padding:24px 28px 80px; }
+.workspace-grid { display:block; }
+.top-panels { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:24px; align-items:stretch; margin-bottom:24px; }
+.env-panel,.operation-panel,.results-panel,.meter-area { min-width:0; }
+.operation-panel { display:flex; flex-direction:column; min-width:0; min-height:0; }
+.operation-panel .builder-shell { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; margin-bottom:0; }
+.operation-panel .builder-hdr,.operation-panel .btn-add-wrap { flex:0 0 auto; }
+.operation-panel .step-rows { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:auto; scrollbar-color:var(--bhi) var(--row); scrollbar-width:thin; padding-right:4px; }
+.results-panel { margin-top:24px; }
+.results-heading { margin-bottom:14px; }
+.results-subtitle { color:var(--dim); font-size:14px; line-height:1.55; }
+.results-tabs { display:flex; position:static; border:1px solid var(--border); border-radius:10px 10px 0 0; overflow:hidden; }
+.results-view-window { position:relative; height:min(720px,68vh); min-height:400px; overflow:hidden; border:1px solid var(--border); border-top:0; border-radius:0 0 12px 12px; background:var(--card); }
+.results-view-panel { width:100%; height:100%; min-height:0; overflow-y:auto; overscroll-behavior:auto; scrollbar-gutter:stable; padding:18px; background:var(--card); scrollbar-color:var(--bhi) var(--row); scrollbar-width:thin; }
+.results-view-panel[hidden] { display:none; }
+.meter-shell { margin-bottom:0; }
+.attacker-results .method-note { margin-bottom:16px; }
+.panel-heading { display:flex; align-items:center; gap:10px; margin:0 0 10px; color:var(--text); font-size:15px; font-weight:700; line-height:1.35; }
+.panel-step { display:grid; place-items:center; width:28px; height:28px; flex:0 0 28px; border:1px solid rgba(129,140,248,.34); border-radius:8px; background:rgba(129,140,248,.12); color:#b8c2ff; font-family:var(--mono); font-size:12px; }
+@keyframes setupPulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(129,140,248,0); }
+  35%,65% { box-shadow:0 0 0 4px rgba(129,140,248,.38),0 0 24px rgba(129,140,248,.16); }
+}
+.env-shell { animation:setupPulse 1.25s ease .45s 1; }
+.builder-shell { animation:setupPulse 1.25s ease 2.25s 1; }
+.env-panel { container-type:inline-size; }
+@container (max-width:720px) { .env-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* ── section label ── */
+.slabel { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.1em;
+  text-transform:uppercase; margin-bottom:10px; }
+
+/* ── env panel ── */
+.env-shell { background:var(--card); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; }
+.env-topbar { display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; }
+.env-title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+
+.env-summary { font-family:var(--mono); font-size:11px; color:var(--ghost);
+  margin-left:8px; font-weight:400; }
+ .env-body { padding:16px; border-top:1px solid var(--border); }
+
+/* preset strip */
+.preset-strip { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.preset-btn { font-family:var(--mono); font-size:11px; font-weight:700;
+  padding:4px 10px; border-radius:5px; border:1px solid var(--border);
+  background:transparent; color:var(--dim); cursor:pointer; transition:all .15s; letter-spacing:.03em; }
+.preset-btn:hover { border-color:var(--ghost); color:var(--text); background:rgba(99,102,241,.08); }
+.preset-btn.sel { border-color:var(--ghost); color:#a5b4fc; background:rgba(99,102,241,.12); }
+
+/* env grid */
+.env-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.env-field label { display:block; font-size:12px; font-weight:700; color:var(--muted);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:5px; }
+.env-field select { width:100%; }
+select { min-width:0; background:var(--row); border:1px solid var(--bhi); border-radius:6px;
+  color:var(--text); font-family:var(--sans); font-size:14px; font-weight:500;
+  padding:7px 28px 7px 10px; cursor:pointer; outline:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238B98A9' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center;
+  transition:border-color .15s; }
+select:hover,select:focus { border-color:var(--ghost); }
+select option { background:#18212c; color:var(--text); }
+
+/* ── combined meter ── */
+.meter-shell { background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:20px; margin-bottom:20px; }
+.meter-empty { text-align:center; padding:24px 0; color:var(--muted); font-size:14px; }
+.meter-empty-icon { font-size:28px; margin-bottom:8px; }
+.meter-active { display:none; }
+
+/* signal blocks row */
+.signal-row { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.signal-left { display:flex; flex-direction:column; gap:10px; }
+.signal-sublabel { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.08em; }
+.signal-blocks { display:flex; gap:5px; align-items:flex-end; }
+.sb { width:32px; border-radius:3px; opacity:.15; background:var(--border); transition:background .35s,opacity .35s; }
+.sb:nth-child(1){height:16px} .sb:nth-child(2){height:24px} .sb:nth-child(3){height:34px}
+.sb:nth-child(4){height:46px} .sb:nth-child(5){height:60px}
+.sb.on { opacity:1; }
+.sb1.on{background:var(--ghost)} .sb2.on{background:var(--quiet)} .sb3.on{background:var(--mod)}
+.sb4.on{background:var(--loud)} .sb5.on{background:var(--scream)}
+.signal-score { text-align:right; }
+.signal-emoji { font-size:40px; line-height:1; }
+.signal-word { font-size:12px; font-weight:700; margin-top:4px; }
+.signal-effective { font-size:14px; color:var(--text); font-weight:600; margin-top:5px; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+
+/* 4-dim bars */
+.dim-bars { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding-top:14px; border-top:1px solid var(--border); }
+.dim-bar-row { display:flex; flex-direction:column; gap:4px; }
+.dim-bar-label { display:flex; justify-content:space-between; align-items:center; }
+.dim-name { font-size:12px; font-weight:600; color:var(--dim); }
+.dim-val { font-family:var(--mono); font-size:12px; color:var(--text); }
+.dim-track { height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; }
+.dim-fill { height:100%; border-radius:3px; transition:width .4s ease,background .4s; }
+
+/* debt gauge */
+.debt-row { display:flex; align-items:center; gap:14px; padding-top:14px; border-top:1px solid var(--border); margin-top:14px; }
+.debt-label-col { flex-shrink:0; }
+.debt-label { font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.08em; }
+.debt-word { font-size:13px; font-weight:700; margin-top:2px; }
+.debt-bar-col { flex:1; }
+.debt-track { height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.debt-fill { height:100%; border-radius:4px; transition:width .45s ease,background .45s; }
+.debt-num { font-family:var(--mono); font-size:13px; color:var(--dim); margin-top:4px; }
+
+/* weakest + strip */
+.weakest-row { padding-top:12px; font-size:13px; color:var(--dim); }
+.weakest-row code { font-family:var(--mono); font-size:11px; color:var(--text);
+  background:var(--row); padding:1px 6px; border-radius:3px; }
+.noise-strip { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.ns-chip { font-family:var(--mono); font-size:11px; padding:2px 7px;
+  border-radius:3px; border:1px solid; cursor:default; }
+
+/* correlation alert */
+.corr-alerts { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.corr-card { border:1px solid; border-radius:8px; padding:10px 12px; }
+.corr-card.crit { border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.06); }
+.corr-card.high { border-color:rgba(249,115,22,.35); background:rgba(249,115,22,.06); }
+.corr-card.med  { border-color:rgba(234,179,8,.35);  background:rgba(234,179,8,.06); }
+.corr-hdr { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.corr-icon { font-size:14px; }
+.corr-name { font-size:13px; font-weight:700; }
+.corr-debt { font-family:var(--mono); font-size:11px; margin-left:auto;
+  padding:1px 6px; border-radius:3px; background:rgba(255,255,255,.07); color:var(--dim); }
+.corr-note { font-size:14px; color:var(--dim); line-height:1.55; overflow-wrap:anywhere; }
+
+/* ── builder ── */
+.builder-shell { background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:16px; margin-bottom:20px; }
+.builder-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.btn-quieter { font-family:var(--sans); font-size:12px; font-weight:600;
+  padding:6px 12px; border-radius:6px; border:1px solid rgba(99,102,241,.4);
+  background:rgba(99,102,241,.08); color:#a5b4fc; cursor:pointer; transition:all .15s; }
+.btn-quieter:hover { background:rgba(99,102,241,.16); border-color:var(--ghost); }
+.step-rows { display:flex; flex-direction:column; gap:7px; }
+.step-row { display:flex; align-items:center; gap:7px; background:var(--row);
+  border:1px solid var(--border); border-radius:8px; padding:7px 10px; animation:pop .18s ease; }
+@keyframes pop { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:none} }
+.step-num { font-family:var(--mono); font-size:11px; color:var(--muted); width:18px; flex-shrink:0; text-align:right; }
+.sel-phase { width:165px; flex-shrink:0; }
+.sel-tech  { flex:1; min-width:0; }
+.btn-rm { background:transparent; border:1px solid transparent; border-radius:5px;
+  color:var(--muted); cursor:pointer; padding:5px 7px; font-size:12px; line-height:1; transition:all .15s; flex-shrink:0; }
+.btn-rm:hover { border-color:var(--scream); color:var(--scream); background:rgba(239,68,68,.07); }
+.btn-add-wrap { margin-top:10px; }
+.btn-add { background:transparent; border:1px dashed var(--bhi); border-radius:7px;
+  color:var(--dim); cursor:pointer; padding:7px 14px; font-family:var(--sans); font-size:14px; font-weight:500;
+  transition:all .18s; display:inline-flex; align-items:center; gap:6px; }
+.btn-add:hover { border-color:var(--ghost); color:var(--text); background:rgba(99,102,241,.05); }
+
+/* ── technique cards ── */
+.cards { display:flex; flex-direction:column; gap:12px; }
+.tcard { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; animation:pop .2s ease; }
+.tcard-g1{border-left:3px solid var(--ghost)} .tcard-g2{border-left:3px solid var(--quiet)}
+.tcard-g3{border-left:3px solid var(--mod)}   .tcard-g4{border-left:3px solid var(--loud)}
+.tcard-g5{border-left:3px solid var(--scream)}
+.tcard-head { display:flex; align-items:center; gap:10px; padding:13px 16px 0; flex-wrap:wrap; }
+.tcard-cmd { font-family:var(--mono); font-size:13px; font-weight:700; color:#fff; flex:1; min-width:0; overflow-wrap:anywhere; }
+.tcard-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.mitre-tag { font-family:var(--mono); font-size:11px; padding:2px 6px; border-radius:3px;
+  background:rgba(99,102,241,.12); color:#a5b4fc; border:1px solid rgba(99,102,241,.25); text-decoration:none; }
+.conf-tag { font-family:var(--mono); font-size:11px; padding:2px 6px; border-radius:3px; border:1px solid; }
+.conf-fv  { background:rgba(34,197,94,.1);  color:#86efac; border-color:rgba(34,197,94,.25); }
+.conf-lt  { background:rgba(234,179,8,.1);  color:#fde047; border-color:rgba(234,179,8,.25); }
+.conf-rp  { background:rgba(99,102,241,.1); color:#a5b4fc; border-color:rgba(99,102,241,.25); }
+.score-pill { font-family:var(--mono); font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; white-space:nowrap; }
+.pill-g1{background:rgba(99,102,241,.15);color:#a5b4fc} .pill-g2{background:rgba(34,197,94,.15);color:#86efac}
+.pill-g3{background:rgba(234,179,8,.15);color:#fde047}  .pill-g4{background:rgba(249,115,22,.15);color:#fdba74}
+.pill-g5{background:rgba(239,68,68,.18);color:#fca5a5}
+.priv-tag { font-family:var(--mono); font-size:11px; padding:2px 6px; border-radius:3px;
+  background:rgba(255,255,255,.05); color:var(--dim); border:1px solid var(--border); }
+.tcard-why { font-size:12px; color:var(--dim); line-height:1.6; overflow-wrap:anywhere; margin:10px 16px 12px;
+  padding-left:10px; border-left:2px solid var(--bhi); }
+/* mini dim bars inside card */
+.card-dims { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin:0 16px 12px; }
+.cdim-row { display:flex; flex-direction:column; gap:3px; }
+.cdim-label { display:flex; justify-content:space-between; }
+.cdim-name { font-size:12px; font-weight:600; color:var(--dim); }
+.cdim-val  { font-family:var(--mono); font-size:12px; color:var(--text); }
+.cdim-track { height:4px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+.cdim-fill  { height:100%; border-radius:2px; transition:width .4s; }
+/* card body grid */
+.tcard-body { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--border); }
+.tcard-col  { padding:12px 16px; }
+.tcard-col+.tcard-col { border-left:1px solid var(--border); }
+.col-head { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px; }
+.trig-row { display:flex; gap:7px; margin-bottom:7px; align-items:flex-start; }
+.trig-tag { font-family:var(--mono); font-size:11px; background:rgba(255,255,255,.04);
+  color:var(--dim); padding:2px 5px; border-radius:3px; white-space:nowrap; flex-shrink:0; margin-top:1px; }
+.trig-dim  { width:4px; height:4px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.trig-txt  { font-size:12px; color:var(--dim); line-height:1.45; }
+.edr-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+.edr-name { font-size:12px; color:var(--dim); }
+.edr-bar-wrap { display:flex; align-items:center; gap:6px; }
+.edr-chip { font-family:var(--mono); font-size:11px; font-weight:700; padding:2px 7px; border-radius:3px; }
+.edr-high  { background:rgba(239,68,68,.15); color:#fca5a5; }
+.edr-med   { background:rgba(234,179,8,.15);  color:#fde047; }
+.edr-low   { background:rgba(34,197,94,.12);  color:#86efac; }
+.edr-none  { background:rgba(255,255,255,.05);color:var(--muted); }
+/* alt */
+.tcard-alt { margin:0 16px 14px; padding:9px 12px;
+  background:rgba(99,102,241,.06); border:1px solid rgba(99,102,241,.18); border-radius:6px; }
+.tcard-alt.guidance-highlight { outline:2px solid rgba(129,140,248,.72); box-shadow:0 0 0 5px rgba(129,140,248,.12); }
+.alt-label { font-size:10px; font-weight:700; color:var(--ghost); letter-spacing:.08em; margin-bottom:3px; }
+.alt-text  { font-size:11px; color:#a5b4fc; line-height:1.5; }
+/* technique card spacing and readable line rhythm */
+.tcard { line-height:1.5; }
+.tcard-head { padding:15px 18px 6px; line-height:1.5; }
+.tcard-cmd { line-height:1.5; }
+.tcard-meta { row-gap:8px; }
+.fit-note { padding:10px 16px; line-height:1.6; }
+.tcard-why { font-size:14px; line-height:1.6; margin:13px 18px 16px; padding-left:12px; }
+.card-dims { gap:12px 16px; margin:0 18px 16px; }
+.cdim-row { gap:5px; }
+.cdim-label { line-height:1.45; }
+.tcard-col { padding:16px 18px; line-height:1.5; }
+.col-head { font-size:12px; line-height:1.5; margin-bottom:12px; }
+.trig-row { gap:8px; margin-bottom:10px; }
+.trig-txt { font-size:14px; line-height:1.55; }
+.edr-row { margin-bottom:10px; min-height:24px; }
+.edr-name { font-size:14px; line-height:1.5; }
+.edr-chip { line-height:1.5; }
+.tcard-alt { margin:0 18px 16px; padding:11px 14px; }
+.tcard-refs { margin:0 18px 16px; border-top:1px solid var(--border); }
+.tcard-refs summary { padding:11px 0; color:#aebbd0; font-size:13px; font-weight:650; cursor:pointer; }
+.tcard-ref-list { display:flex; flex-wrap:wrap; gap:8px 18px; padding:0 0 13px; }
+.tcard-ref-list a { color:#a5b4fc; font-size:13px; line-height:1.55; text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }
+.alt-label { font-size:12px; line-height:1.5; margin-bottom:5px; }
+.alt-text { font-size:14px; line-height:1.55; }
+.safe-guidance-review { margin:0 0 16px; padding:15px 18px; border:1px solid rgba(129,140,248,.35); border-radius:10px; background:rgba(99,102,241,.08); }
+.safe-guidance-review[hidden] { display:none; }
+.safe-guidance-review .slabel { margin-bottom:7px; color:#c7d2fe; }
+.safe-guidance-intro { margin-bottom:12px; color:#b9c5d5; font-size:14px; line-height:1.55; }
+.safe-guidance-list { display:grid; gap:9px; }
+.safe-guidance-item { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:rgba(17,24,33,.72); }
+.safe-guidance-item strong { display:block; margin-bottom:4px; color:#e6edf3; font-size:14px; line-height:1.45; }
+.safe-guidance-item p { color:#c3cede; font-size:14px; line-height:1.55; }
+
+/* ── defender view ── */
+
+.dv-empty { text-align:center; padding:40px; color:var(--muted); font-size:14px; }
+.dv-timeline-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.dv-tl-item { display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); align-items:flex-start; }
+.dv-tl-item:last-child { border-bottom:none; }
+.dv-tl-time { font-family:var(--mono); font-size:12px; color:#d0dae8; width:88px; flex-shrink:0; padding-top:3px; font-variant-numeric:tabular-nums; }
+.dv-tl-dot  { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; border:2px solid var(--card); }
+.dv-tl-right { flex:1; min-width:0; }
+.dv-tl-actor { font-size:13px; font-weight:700; margin-bottom:4px; }
+.dv-tl-ev   { font-size:14px; color:var(--text); line-height:1.55; overflow-wrap:anywhere; }
+.dv-tl-tech { font-family:var(--mono); font-size:13px; color:#c1ccdc; margin-top:5px; overflow-wrap:anywhere; }
+
+/* ── guide dialog ── */
+.guide-trigger { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border:1px solid rgba(129,140,248,.42); border-radius:50%; background:linear-gradient(145deg,rgba(129,140,248,.13),rgba(17,24,33,.96)); color:#c7d2fe; cursor:pointer; transition:transform .18s,border-color .18s,box-shadow .18s; }
+.guide-trigger:hover { transform:translateY(-1px); border-color:#a5b4fc; box-shadow:0 0 0 3px rgba(129,140,248,.12); color:#fff; }
+.guide-trigger:focus-visible,.guide-close:focus-visible,.guide-tab:focus-visible { outline:2px solid #a5b4fc; outline-offset:3px; }
+.guide-trigger svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.guide-dialog { position:fixed; inset:auto; top:50%; left:50%; transform:translate(-50%,-50%); margin:0; width:min(660px,calc(100vw - 32px)); height:min(620px,calc(100vh - 40px)); max-height:calc(100vh - 40px); padding:0; overflow:hidden; border:1px solid #39495d; border-radius:16px; background:var(--card); color:var(--text); box-shadow:0 30px 100px rgba(0,0,0,.65); }
+.guide-dialog::backdrop { background:rgba(3,6,10,.84); backdrop-filter:blur(5px); }
+.guide-shell { display:flex; flex-direction:column; height:100%; max-height:inherit; }
+.guide-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex:0 0 auto; padding:24px 26px 18px; }
+.guide-kicker { color:#a5b4fc; font:600 11px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+.guide-title { margin-top:7px; color:var(--text); font-size:23px; line-height:1.3; font-weight:700; }
+.guide-close { display:grid; place-items:center; width:36px; height:36px; flex:0 0 36px; border:1px solid var(--border); border-radius:9px; background:var(--row); color:#c5cfdd; cursor:pointer; }
+.guide-close:hover { border-color:var(--bhi); color:#fff; background:#202b39; }
+.guide-close svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+.guide-tabs { display:flex; flex:0 0 auto; gap:4px; margin:0 26px; border-bottom:1px solid var(--border); }
+.guide-tab { padding:10px 14px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--dim); font:600 14px/1.3 var(--sans); cursor:pointer; }
+.guide-tab:hover { color:var(--text); }
+.guide-tab[aria-selected="true"] { border-bottom-color:var(--ghost); color:#e3e6ff; }
+.guide-body { flex:1 1 auto; min-height:0; overflow:hidden; padding:22px 26px 0; color:#c6d0de; font-size:14px; line-height:1.65; }
+.guide-panel { height:100%; overflow-y:auto; padding-bottom:26px; }
+.guide-panel.guide-slide-forward { animation:guide-slide-forward .18s ease-out both; }
+.guide-panel.guide-slide-back { animation:guide-slide-back .18s ease-out both; }
+@keyframes guide-slide-forward { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
+@keyframes guide-slide-back { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+.guide-panel[hidden] { display:none; }
+.guide-lede { color:#e0e7f0; font-size:15px; line-height:1.7; }
+.guide-section { margin-top:22px; }
+.guide-section h3 { margin-bottom:10px; color:#aebbd0; font:600 11px/1.4 var(--mono); letter-spacing:.09em; text-transform:uppercase; }
+.guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+.guide-tile { min-width:0; padding:14px; border:1px solid var(--border); border-radius:10px; background:rgba(24,33,44,.72); }
+.guide-tile:last-child:nth-child(odd) { grid-column:1/-1; }
+.guide-tile h4 { margin-bottom:5px; color:#e6edf3; font-size:14px; line-height:1.45; }
+.guide-tile p { color:#b6c2d1; font-size:14px; line-height:1.55; }
+.guide-steps { display:grid; gap:12px; list-style:none; }
+.guide-steps li { display:grid; grid-template-columns:32px minmax(0,1fr); gap:12px; align-items:start; }
+.guide-step-no { display:grid; place-items:center; width:30px; height:30px; border:1px solid rgba(129,140,248,.35); border-radius:9px; background:rgba(129,140,248,.1); color:#c7d2fe; font:600 11px var(--mono); }
+.guide-steps strong { display:block; margin-bottom:2px; color:var(--text); font-size:14px; }
+.guide-steps p { color:#b6c2d1; font-size:14px; line-height:1.55; }
+.guide-notes { display:grid; gap:11px; }
+.guide-note { padding:13px 14px; border-left:2px solid #818cf8; border-radius:0 8px 8px 0; background:#171e2b; }
+.guide-note strong { display:block; margin-bottom:3px; color:#e6edf3; font-size:14px; }
+.guide-note p { color:#b6c2d1; font-size:14px; line-height:1.55; }
+.guide-local { margin-top:14px; padding-top:13px; border-top:1px solid var(--border); color:#aab6c6; font-size:13px; line-height:1.55; }
+
+/* ── footer ── */
+.foot { display:flex; justify-content:center; border-top:1px solid var(--border); padding:13px 20px; color:var(--dim); margin-top:32px; }
+.foot-meta { display:flex; align-items:center; justify-content:center; font-size:12px; }
+.version-detail { color:var(--muted); font-family:var(--mono); font-size:12px; }
+/* ── responsive ── */
+@media(max-width:1180px) {
+  .top-panels { grid-template-columns:1fr; }
+  .operation-panel { max-height:min(70vh,640px); }
+}
+@media(max-width:640px) {
+  .wrap { padding:16px 12px 60px; }
+  .env-grid { grid-template-columns:1fr 1fr; }
+  .tcard-body,.dim-bars,.card-dims { grid-template-columns:1fr; }
+  .tcard-col+.tcard-col { border-left:none; border-top:1px solid var(--border); }
+  .signal-row { flex-direction:column; align-items:flex-start; }
+  .sel-phase { width:120px; }
+}
+@media(max-width:460px) {
+  .hdr { padding:10px 14px; }
+  .hdr .badge { display:none; }
+  .hdr-right { gap:8px; }
+}
+@media(max-width:640px) {
+  .results-view-window { height:min(640px,66vh); min-height:340px; }
+  .guide-dialog { width:calc(100vw - 24px); height:min(620px,calc(100vh - 24px)); max-height:calc(100vh - 24px); }
+  .guide-shell { max-height:calc(100vh - 24px); }
+  .guide-head { padding:20px 19px 15px; }
+  .guide-tabs { margin:0 19px; }
+  .guide-tab { padding:10px 11px; }
+  .guide-body { padding:19px 19px 0; }
+  .guide-grid { grid-template-columns:1fr; }
+  .guide-tile:last-child:nth-child(odd) { grid-column:auto; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div>
+    <div class="logo">Red<em>Noise</em>Index</div>
+  </div>
+  <div class="hdr-right">
+    <div class="badge">Authorized engagements only</div>
+    <button class="guide-trigger" id="guideTrigger" type="button" aria-label="Open the RedNoiseIndex guide" title="Guide" aria-haspopup="dialog" aria-controls="guideDialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
+    </button>
+    <a class="profile-mark" href="https://www.linkedin.com/in/sahil-arya-20585b159/" target="_blank" rel="noopener noreferrer" aria-label="Sahil Arya on LinkedIn" title="Sahil Arya on LinkedIn"><span class="profile-initials" aria-hidden="true">SA</span><span class="profile-in" aria-hidden="true">in</span></a>
+  </div>
+</header>
+
+
+
+<dialog class="guide-dialog" id="guideDialog" aria-labelledby="guideTitle">
+  <div class="guide-shell">
+    <div class="guide-head">
+      <div><div class="guide-kicker">RedNoiseIndex · Guide</div><h2 class="guide-title" id="guideTitle">Understand the planner</h2></div>
+      <button class="guide-close" id="guideClose" type="button" aria-label="Close guide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="guide-tabs" role="tablist" aria-label="Guide sections">
+      <button class="guide-tab" id="guideTabAbout" type="button" role="tab" aria-selected="true" aria-controls="guidePanelAbout" tabindex="0" data-guide-tab="about">Overview</button>
+      <button class="guide-tab" id="guideTabUse" type="button" role="tab" aria-selected="false" aria-controls="guidePanelUse" tabindex="-1" data-guide-tab="use">How to use</button>
+      <button class="guide-tab" id="guideTabDisclaimer" type="button" role="tab" aria-selected="false" aria-controls="guidePanelDisclaimer" tabindex="-1" data-guide-tab="disclaimer">Disclaimer</button>
+    </div>
+    <div class="guide-body">
+      <section class="guide-panel" id="guidePanelAbout" role="tabpanel" aria-labelledby="guideTabAbout" data-guide-panel="about">
+        <p class="guide-lede">RedNoiseIndex is a local planning aid for authorized red-team exercises. It helps security teams discuss how selected techniques may appear across endpoint, network, identity, and forensic telemetry in a chosen environment.</p>
+        <div class="guide-section">
+          <h3>Purpose</h3>
+          <p>Make assumptions about visibility, sequence risk, and defender response easier to review before an exercise, from both attacker-planning and defender-analysis perspectives.</p>
+        </div>
+        <div class="guide-section">
+          <h3>What it helps you assess</h3>
+          <div class="guide-grid">
+            <article class="guide-tile"><h4>Environment-aware estimates</h4><p>Adjust the scenario for deployed sensors, logging, host type, privilege, time window, and SOC conditions.</p></article>
+            <article class="guide-tile"><h4>Operation sequence</h4><p>Build an ordered set of techniques and review illustrative signal levels, cumulative exposure, and sequence warnings.</p></article>
+            <article class="guide-tile"><h4>Two useful perspectives</h4><p>Review technique details as an attacker planner, or switch to the defender timeline to inspect illustrative telemetry and response.</p></article>
+          </div>
+        </div>
+      </section>
+      <section class="guide-panel" id="guidePanelUse" role="tabpanel" aria-labelledby="guideTabUse" data-guide-panel="use" hidden>
+        <ol class="guide-steps">
+          <li><span class="guide-step-no">01</span><div><strong>Set the environment</strong><p>Choose a quick preset or configure the monitoring, host, privilege, timing, and SOC settings.</p></div></li>
+          <li><span class="guide-step-no">02</span><div><strong>Build the operation</strong><p>Add phase and technique steps in the order you intend to discuss or assess them.</p></div></li>
+          <li><span class="guide-step-no">03</span><div><strong>Review both views</strong><p>Use the live meter and technique breakdown, then switch to Defender View for the illustrative event timeline.</p></div></li>
+          <li><span class="guide-step-no">04</span><div><strong>Validate within scope</strong><p>Treat the output as a planning discussion aid. Confirm assumptions and approvals with the system owner before any exercise.</p></div></li>
+        </ol>
+      </section>
+      <section class="guide-panel" id="guidePanelDisclaimer" role="tabpanel" aria-labelledby="guideTabDisclaimer" data-guide-panel="disclaimer" hidden>
+        <div class="guide-notes">
+          <div class="guide-note"><strong>Legacy case — Hot Potato</strong><p>Not included in the live scoring catalog: the original 2016 Hot Potato research described a local Windows privilege-escalation case involving name-resolution behavior and HTTP-to-SMB NTLM relay. Microsoft published <a href="https://learn.microsoft.com/en-us/security-updates/securitybulletins/2016/ms16-075" target="_blank" rel="noopener noreferrer">MS16-075</a> in June 2016 to address the relevant SMB credential-forwarding vulnerability. This historical note does not generalize to later tools with “Potato” in their names. See the <a href="https://foxglovesecurity.com/2016/01/16/hot-potato/" target="_blank" rel="noopener noreferrer">original research</a> and the general <a href="https://attack.mitre.org/techniques/T1068/" target="_blank" rel="noopener noreferrer">MITRE ATT&amp;CK&reg; T1068 classification</a>.</p></div>
+          <div class="guide-note"><strong>Illustrative estimates</strong><p>Detection ratings, sensor dimensions, environment factors, OPSEC Debt, sequence correlations, alternatives, privilege tags, and SOC timings are author-defined estimates. They have not been validated against specific product versions, configurations, or production telemetry; this file includes no reproducible test records or product-specific detection-rule references.</p></div>
+          <div class="guide-note"><strong>Real-world coverage varies</strong><p>Visibility and response depend on product versions, policies, enabled auditing, sensor coverage, network architecture, and analyst workflows. The results are not predictions, guarantees, compliance evidence, or authorization.</p></div>
+          <div class="guide-note"><strong>MITRE ATT&amp;CK&reg; attribution and safe use</strong><p>Technique prerequisites and MITRE ATT&amp;CK&reg; mappings are references, not proof of feasibility or complete classification. &copy; 2026 The MITRE Corporation. This work is reproduced and distributed with the permission of The MITRE Corporation. RedNoiseIndex is independent and is not affiliated with or endorsed by MITRE. See the <a href="https://attack.mitre.org/resources/terms-of-use/" target="_blank" rel="noopener noreferrer">MITRE ATT&amp;CK Terms of Use</a>. Use this planner only for authorized, scoped assessment planning.</p></div>
+        </div>
+        <p class="guide-local">This single-file page describes techniques but does not run them. It has no third-party scripts, analytics, or data-submission code; operation settings stay in the page and calculations run locally. The hosting provider may process standard request metadata, such as visitor IP addresses. External sites open only when you select a link.</p>
+      </section>
+    </div>
+  </div>
+</dialog>
+<main class="wrap">
+<div class="workspace-grid">
+<div class="top-panels">
+<section class="env-panel" aria-label="Environment profile">
+
+<!-- ─── ENVIRONMENT PANEL ─── -->
+<div class="panel-heading"><span class="panel-step">01</span><span>Configure environment</span></div>
+<div class="env-shell">
+  <div class="env-topbar">
+    <div class="env-title">
+      
+      Environment Configuration
+      <span class="env-summary" id="envSummary">Basic Lab (No EDR)</span>
+    </div>
+  </div>
+  <div class="env-body" id="envBody">
+    <div class="preset-strip">
+      <div class="slabel" style="width:100%;margin-bottom:6px">Quick presets</div>
+      <button class="preset-btn sel" onclick="applyPreset('lab')"      id="pr-lab">No EDR (Lab)</button>
+      <button class="preset-btn"    onclick="applyPreset('corp')"      id="pr-corp">Corporate Windows</button>
+      <button class="preset-btn"    onclick="applyPreset('mde')"       id="pr-mde">MDE + SIEM</button>
+      <button class="preset-btn"    onclick="applyPreset('cs')"        id="pr-cs">CrowdStrike Enterprise</button>
+      <button class="preset-btn"    onclick="applyPreset('mdr')"       id="pr-mdr">Elite MDR</button>
+    </div>
+    <div class="env-grid">
+      <div class="env-field">
+        <label>EDR Platform</label>
+        <select id="e-edr" onchange="envChanged()">
+          <option value="none">No EDR (AV only)</option>
+          <option value="defender">Windows Defender</option>
+          <option value="sysmon">Defender + Sysmon</option>
+          <option value="mde">Microsoft MDE</option>
+          <option value="cs">CrowdStrike Falcon</option>
+          <option value="s1">SentinelOne</option>
+          <option value="mdr">MDR (tuned rules)</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Network Monitoring</label>
+        <select id="e-net" onchange="envChanged()">
+          <option value="none">None</option>
+          <option value="basic">Basic Firewall</option>
+          <option value="ids">IDS / IPS</option>
+          <option value="ngfw">NGFW + Proxy</option>
+          <option value="pcap">Full DPI / PCAP</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Identity Monitoring</label>
+        <select id="e-id" onchange="envChanged()">
+          <option value="none">None</option>
+          <option value="basic">Basic AD Logs</option>
+          <option value="mdi">MDI / ATA Deployed</option>
+          <option value="full">Full IAM + UEBA</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Log Coverage</label>
+        <select id="e-log" onchange="envChanged()">
+          <option value="minimal">Minimal</option>
+          <option value="basic">Basic Event Log</option>
+          <option value="sysmon">Sysmon Deployed</option>
+          <option value="siem">Full SIEM Ingestion</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Target Host Type</label>
+        <select id="e-host" onchange="envChanged()">
+          <option value="workstation">Workstation</option>
+          <option value="server">Server</option>
+          <option value="dc">Domain Controller</option>
+          <option value="cloud">Cloud Workload</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Your Privilege Level</label>
+        <select id="e-priv" onchange="envChanged()">
+          <option value="local_user">Local User</option>
+          <option value="local_admin">Local Admin</option>
+          <option value="domain_user">Domain User</option>
+          <option value="da">Domain Admin</option>
+          <option value="system">SYSTEM</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>Time Window</label>
+        <select id="e-time" onchange="envChanged()">
+          <option value="business">Business Hours</option>
+          <option value="after">After Hours</option>
+          <option value="weekend">Weekend</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>SOC Strength</label>
+        <select id="e-soc" onchange="envChanged()">
+          <option value="none">No SOC</option>
+          <option value="weak">Weak (Mon–Fri)</option>
+          <option value="moderate">Moderate (24/7 basic)</option>
+          <option value="strong">Strong (24/7 + hunt)</option>
+          <option value="elite">Elite MDR</option>
+        </select>
+      </div>
+      <div class="env-field">
+        <label>SOC Alert Fatigue</label>
+        <select id="e-fatigue" onchange="envChanged()">
+          <option value="low">Low — Alerts actioned fast</option>
+          <option value="medium">Medium — Some alert lag</option>
+          <option value="high">High — Many alerts ignored</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="operation-panel" aria-label="Operation setup">
+  <div class="panel-heading"><span class="panel-step">02</span><span>Build operation</span></div>
+  <div class="builder-shell">
+    <div class="builder-hdr">
+      <div class="slabel" style="margin-bottom:0">Technique steps</div>
+      <button class="btn-quieter" onclick="showSafeGuidance()">🛡️ Review safer test options</button>
+    </div>
+    <div class="step-rows" id="stepRows"></div>
+    <div class="btn-add-wrap">
+      <button class="btn-add" id="btnAdd">＋ Add technique</button>
+    </div>
+  </div>
+</section>
+</div>
+<section class="results-panel" aria-label="Operation analysis">
+  <div class="results-heading">
+    <div class="slabel" style="margin-bottom:4px">Operation analysis</div>
+    <div class="results-subtitle">Review the selected techniques from the attacker or defender perspective.</div>
+  </div>
+  <div class="meter-area">
+
+<!-- ─── METER ─── -->
+<div class="slabel" style="margin-bottom:8px">Live noise meter</div>
+<div class="meter-shell">
+  <div class="meter-empty" id="meterEmpty">
+    <div class="meter-empty-icon">📡</div>
+    Add a phase and technique in the operation editor above to see your noise floor
+  </div>
+  <div class="meter-active" id="meterActive">
+    <div class="signal-row">
+      <div class="signal-left">
+        <div class="signal-sublabel">TECHNICAL DETECTION SIGNAL</div>
+        <div class="signal-blocks">
+          <div class="sb sb1" id="sb1"></div><div class="sb sb2" id="sb2"></div>
+          <div class="sb sb3" id="sb3"></div><div class="sb sb4" id="sb4"></div>
+          <div class="sb sb5" id="sb5"></div>
+        </div>
+      </div>
+      <div class="signal-score">
+        <div class="signal-emoji" id="mEmoji"></div>
+        <div class="signal-word"  id="mWord"></div>
+        <div class="signal-effective" id="mEffective"></div>
+      </div>
+    </div>
+    <div class="dim-bars">
+      <div class="dim-bar-row"><div class="dim-bar-label"><span class="dim-name">Endpoint</span><span class="dim-val" id="dvEndpoint">-</span></div><div class="dim-track"><div class="dim-fill" id="dfEndpoint"></div></div></div>
+      <div class="dim-bar-row"><div class="dim-bar-label"><span class="dim-name">Network</span><span class="dim-val" id="dvNetwork">-</span></div><div class="dim-track"><div class="dim-fill" id="dfNetwork"></div></div></div>
+      <div class="dim-bar-row"><div class="dim-bar-label"><span class="dim-name">Identity</span><span class="dim-val" id="dvIdentity">-</span></div><div class="dim-track"><div class="dim-fill" id="dfIdentity"></div></div></div>
+      <div class="dim-bar-row"><div class="dim-bar-label"><span class="dim-name">Forensics</span><span class="dim-val" id="dvForensics">-</span></div><div class="dim-track"><div class="dim-fill" id="dfForensics"></div></div></div>
+    </div>
+    <div class="debt-row">
+      <div class="debt-label-col">
+        <div class="debt-label">OPSEC DEBT</div>
+        <div class="debt-word" id="debtWord"></div>
+      </div>
+      <div class="debt-bar-col">
+        <div class="debt-track"><div class="debt-fill" id="debtFill"></div></div>
+        <div class="debt-num" id="debtNum"></div>
+      </div>
+    </div>
+    <div class="weakest-row" id="weakestRow"></div>
+    <div class="corr-alerts" id="corrAlerts"></div>
+  </div>
+</div>
+
+</div>
+  <div class="tabs results-tabs" role="tablist" aria-label="Analysis perspective">
+    <button class="tab active" id="tab-build" type="button" role="tab" aria-selected="true" aria-controls="buildTab" tabindex="0" onclick="setTab('build')" onkeydown="navigateAnalysisTabs(event)">Attacker View</button>
+    <button class="tab" id="tab-dv" type="button" role="tab" aria-selected="false" aria-controls="dvTab" tabindex="-1" onclick="setTab('dv')" onkeydown="navigateAnalysisTabs(event)">Defender View</button>
+  </div>
+  <div class="results-view-window" id="resultsViewWindow">
+  <div id="buildTab" class="attacker-results results-view-panel" role="tabpanel" aria-labelledby="tab-build" tabindex="0">
+    <div class="method-note">All scores, platform likelihoods, triggers, and timelines are author estimates, not product-specific test results. No reproducible test records or vendor-rule references are included.</div>
+    <section id="safeGuidanceReview" class="safe-guidance-review" aria-live="polite" aria-labelledby="safeGuidanceTitle" tabindex="-1" hidden></section>
+    <div id="cardsWrap"></div>
+  </div>
+  <div id="dvTab" class="dv-shell results-view-panel" role="tabpanel" aria-labelledby="tab-dv" tabindex="0" hidden>
+    <div class="slabel" style="margin-bottom:8px">Illustrative defender timeline — estimated telemetry and SOC response</div>
+    <div id="dvContent">
+      <div class="dv-empty">Choose a phase and technique in the operation editor above. Times are illustrative estimates, not measured response guarantees.</div>
+    </div>
+  </div>
+</div>
+</section>
+</div>
+
+</main>
+<footer class="foot">
+  <div class="foot-meta"><span class="version-detail">Version 1 · 46 techniques · 8 phases</span></div>
+</footer>
+<script>
+// ════════════════════════════════════════
+// DATA — Phases
+// ════════════════════════════════════════
+const PHASES = {
+  initial:     'Initial Access',
+  recon:       'Recon',
+  creds:       'Credential Access',
+  kerberos:    'Kerberos Attacks',
+  lateral:     'Lateral Movement',
+  evasion:     'Defense Evasion',
+  c2:          'C2 & Infrastructure',
+  persistence: 'Persistence',
+};
+
+// ════════════════════════════════════════
+// DATA — Environment Multipliers
+// ════════════════════════════════════════
+const MUL = {
+  edr:{
+    none:    {ep:.15, note:'AV-only baseline — behavior coverage depends on the installed product and policy'},
+    defender:{ep:.45, note:'Built-in Defender protections — capability and policy vary by configuration'},
+    sysmon:  {ep:.60, note:'Sysmon deployed — rich telemetry, no blocking'},
+    mde:     {ep:1.0, note:'MDE — endpoint coverage depends on subscription, onboarding, and policy'},
+    cs:      {ep:1.25,note:'CrowdStrike Falcon — sensor and policy coverage vary by deployment'},
+    s1:      {ep:1.0, note:'SentinelOne — sensor and policy coverage vary by deployment'},
+    mdr:     {ep:1.4, note:'MDR overlay — service scope and response practices vary'},
+  },
+  net:{
+    none: .10, basic:.40, ids:.70, ngfw:1.0, pcap:1.30,
+  },
+  id:{
+    none:.20, basic:.50, mdi:1.0, full:1.30,
+  },
+  log:{
+    minimal:{forensics:.30,ep:.70}, basic:{forensics:.60,ep:.85},
+    sysmon:{forensics:.90,ep:.95},  siem:{forensics:1.2,ep:1.0},
+  },
+  host:{ workstation:1.0, server:1.1, dc:1.35, cloud:.90 },
+  priv:{ local_user:.80, local_admin:1.0, domain_user:.90, da:1.15, system:1.05 },
+  time:{ business:1.0, after:.65, weekend:.45 },
+  soc:{ none:.05, weak:.40, moderate:.70, strong:1.0, elite:1.30 },
+  fatigue:{ low:1.0, medium:.75, high:.50 },
+};
+
+// ════════════════════════════════════════
+// DATA — Sequence Correlation Chains
+// ════════════════════════════════════════
+const CORRELATIONS = [
+  { contains:['bloodhound','kerberoast_bulk','dcsync_all'], sev:'crit',
+    label:'Directory Discovery → Replication Activity', debtAdd:40,
+    note:'This sequence spans discovery, service-ticket requests, and directory-replication activity. Cross-source correlation requires relevant telemetry and a locally configured rule; the bonus score and response are illustrative only.' },
+  { contains:['mimi_disk','dcsync_all'], sev:'crit',
+    label:'Credential Dump + Domain Replication', debtAdd:30,
+    note:'LSASS access and directory-replication activity can provide useful context when both are collected and correlated. Neither event alone or together confirms compromise without investigation.' },
+  { contains:['whoami_all','net_group_da','nmap_syn'], sev:'high',
+    label:'Classic Recon Fingerprint', debtAdd:18,
+    note:'A cluster of account, group, and network discovery may be useful behavioral context. Alert logic and correlation depend on local tools, telemetry, and baselines; no vendor-specific rule is assumed.' },
+  { contains:['ps_encoded','amsi_patch'], sev:'high',
+    label:'Script Activity + Inspection Tampering', debtAdd:20,
+    note:'Encoded script activity and attempted inspection tampering may contribute to a broader investigation when the relevant telemetry is collected. No alert name or automatic response is assumed.' },
+  { contains:['golden_ticket','lateral_psexec'], sev:'high',
+    label:'Golden Ticket + Lateral Movement', debtAdd:25,
+    note:'Authentication and remote-service activity may be investigated together when relevant domain-controller, endpoint, and network telemetry is available. The page cannot predict a detection or response.' },
+  { contains:['bloodhound','diamond_ticket'], sev:'med',
+    label:'Directory Discovery → Ticket Activity', debtAdd:12,
+    note:'Directory collection followed by anomalous authentication may provide investigative context if those events are collected. This sequence label and bonus are heuristic, not an indicator of operator intent.' },
+];
+
+// ════════════════════════════════════════
+// DATA — SCORE META
+// ════════════════════════════════════════
+const SM = {
+  1:{emoji:'⚫',word:'Ghost',    col:'#6366f1',cls:'tcard-g1',pill:'pill-g1'},
+  2:{emoji:'🟢',word:'Quiet',    col:'#22c55e',cls:'tcard-g2',pill:'pill-g2'},
+  3:{emoji:'🟡',word:'Moderate', col:'#eab308',cls:'tcard-g3',pill:'pill-g3'},
+  4:{emoji:'🟠',word:'Loud',     col:'#f97316',cls:'tcard-g4',pill:'pill-g4'},
+  5:{emoji:'🔴',word:'Screaming',col:'#ef4444',cls:'tcard-g5',pill:'pill-g5'},
+};
+
+const DIM_COLS = {
+  endpoint:'#6366f1', network:'#22c55e', identity:'#f97316', forensics:'#eab308'
+};
+
+const PRIV_LABELS = {
+  local_user:'Local User', local_admin:'Local Admin',
+  domain_user:'Domain User', da:'Domain Admin', system:'SYSTEM',
+  ad_replication:'AD replication rights', krbtgt_key:'KRBTGT key material', service_key:'Service account key material', credential_material:'NTLM credential material', ticket_material:'Kerberos ticket material', rdp_access:'RDP authorization', wmi_subscription_rights:'WMI subscription permissions',
+  remote_wmi:'Remote WMI permissions', remote_dcom:'Remote DCOM activation permissions', winrm_access:'WinRM authorization',
+};
+const CONF_CLS = {
+  'field-verified':'conf-fv', 'lab-tested':'conf-lt', research:'conf-rp',
+  'author-estimate':'conf-rp', 'author-supplied':'conf-rp',
+};
+const CONF_LABELS = {
+  'field-verified':'Field Verified', 'lab-tested':'Lab Tested', research:'Research',
+  'author-estimate':'Author estimate', 'author-supplied':'Author supplied',
+};
+function confidenceMeta(value) {
+  const raw = String(value ?? '').trim();
+  const key = raw.toLowerCase().replace(/[ _]+/g,'-');
+  const fallbackLabel = raw ? raw.replace(/[-_]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Not specified';
+  return { cls:CONF_CLS[key] || 'conf-rp', label:CONF_LABELS[key] || fallbackLabel };
+}
+
+// ════════════════════════════════════════
+// DATA — Techniques
+// dims: {endpoint, network, identity, forensics}  (1-5 base, before env)
+// triggers: [{dim, tag, txt}]
+// edrs: {mde, cs, s1, cb}  high|medium|low|none
+// timeline: [{sensor, cls (sensor|edr|siem|soc), ev}]
+// Safe test guidance is displayed per technique; no lower-signal technique substitutions are made.
+// ════════════════════════════════════════
+const T = {
+// ── INITIAL ACCESS ─────────────────────────────────────────
+html_smuggling: {
+  name:'HTML Smuggling (phishing lure)', phase:'initial', mitre:'T1027.006',
+  confidence:'author-estimate', privReq:'none', targets:['workstation'],
+  dims:{endpoint:3,network:2,identity:1,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'If the document or related content launches a process, process-creation telemetry may record the parent and child when enabled'},
+    {dim:'endpoint',tag:'SmartScreen',txt:'Mark-of-the-Web and reputation checks depend on how the file is delivered, browser behavior, policy, and Windows protections'},
+    {dim:'forensics',tag:'Prefetch',txt:'File and execution artifacts depend on delivery, browser, and endpoint configuration'},
+    {dim:'network', tag:'Proxy',txt:'Email, web, or proxy metadata may be available when those controls log the delivery path'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'Sensor',cls:'sensor',ev:'Browser downloads .html attachment'},
+    {sensor:'SmartScreen',cls:'edr',ev:'MOTW (Mark-of-the-Web) check performed'},
+    {sensor:'EDR',cls:'edr',ev:'Browser spawns unexpected child process — behavioral flag'},
+    {sensor:'SIEM',cls:'siem',ev:'Proxy log: unusual HTML file serving executable content'},
+  ],
+  why:'Some HTML-smuggling implementations assemble content in the browser rather than downloading a separate executable. This does not make delivery or execution invisible; browser, email, web, and endpoint telemetry depend on configuration and the specific flow.',
+  alt:'Use an approved phishing-delivery simulation with harmless content; verify mail, browser, web, and endpoint controls without executing a payload.',
+},
+macro_doc: {
+  name:'Macro-enabled phishing attachment (VBA)', phase:'initial', mitre:'T1566.001',
+  confidence:'author-estimate', privReq:'none', targets:['workstation'],
+  dims:{endpoint:4,network:2,identity:1,forensics:4},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Office child-process activity may appear in process-creation telemetry when the relevant auditing or endpoint sensor is enabled'},
+    {dim:'endpoint',tag:'MDE Alert', txt:'Endpoint products may apply policy- and version-specific analytics to Office macro and child-process activity'},
+    {dim:'forensics',tag:'Disk',     txt:'Macro code embedded in document — static analysis will find it'},
+    {dim:'network', tag:'Proxy',     txt:'Document may make outbound C2 callback on open'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'medium'},
+  timeline:[
+    {sensor:'AV',cls:'edr',ev:'Macro detection on open (signature or behavioral)'},
+    {sensor:'EDR',cls:'edr',ev:'Office process creation and child-process activity may be visible to endpoint analytics; alert behavior varies'},
+    {sensor:'SIEM',cls:'siem',ev:'Office activity may be correlated with delivery and execution context when those sources are collected'},
+    {sensor:'SOC', cls:'soc', ev:'SOC review and response depend on local workflows and alert confidence'},
+  ],
+  why:'Macro execution and unusual Office child-process behavior can be visible to endpoint controls. Office blocks macros in internet-marked files by default in supported configurations, but Mark of the Web, policy, trusted locations, and Office version affect the result.',
+  alt:'Use an approved Office macro simulation in a scoped test tenant; verify macro policy and alert coverage without delivering a payload.',
+},
+// ── RECON ─────────────────────────────────────────
+hostname: {
+  name:'hostname', phase:'recon', mitre:'T1082',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:0,identity:0,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process creation — hostname.exe spawned as child of shell'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Event 1 — hostname.exe process creation logged'},
+  ],
+  why:'Reading the local host name is a basic discovery action. If launched as a separate process, process auditing may record it; the resulting telemetry depends on how it is invoked and what is collected.',
+  alt:'Use an approved discovery simulation and verify process-creation collection and alert context with the endpoint owner.',
+},
+whoami: {
+  name:'whoami', phase:'recon', mitre:'T1033',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:0,identity:1,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process creation may record whoami.exe and its parent when process-creation auditing is enabled'},
+    {dim:'endpoint',tag:'Sysmon 1',  txt:'Sysmon Event 1 can include command line and parent context when Sysmon is installed and configured'},
+    {dim:'identity',tag:'Audit',     txt:'The command reads the current token; Windows does not necessarily emit a dedicated Security event for this query'},
+  ],
+  edrs:{mde:'medium',cs:'low',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Process creation — whoami.exe, CommandLine logged'},
+    {sensor:'EDR',   cls:'edr',  ev:'Recon sequence building — individual alert unlikely'},
+  ],
+  why:'whoami can be recorded as process activity when process auditing or an endpoint sensor is enabled. Repeated discovery commands may provide context for analytics, but alert logic depends on the deployed product and local baselines.',
+  alt:'Use an approved identity-discovery simulation and verify process and identity telemetry with the system owner.',
+},
+whoami_all: {
+  name:'whoami /all', phase:'recon', mitre:'T1033',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:4,network:0,identity:2,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process-creation logging may record the command line when the applicable audit policy is enabled'},
+    {dim:'endpoint',tag:'Context', txt:'Expanded group and privilege details may contribute to a discovery pattern; alert behavior varies'},
+    {dim:'endpoint',tag:'Context',   txt:'Command-line and surrounding process activity may be considered by endpoint analytics'},
+    {dim:'identity', tag:'Context',    txt:'The command output is local; a dedicated audit record is not guaranteed'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Process creation — whoami /all, CommandLine visible'},
+    {sensor:'EDR',   cls:'edr',  ev:'Process and discovery context may be considered by endpoint analytics; no vendor-specific alert is assumed'},
+    {sensor:'EDR',   cls:'edr',  ev:'Behavioral analytics may consider repeated discovery activity; alert logic varies by deployment'},
+    {sensor:'SIEM',  cls:'siem', ev:'Alert correlated with other recon events if present'},
+  ],
+  why:'The /all option displays additional token, group, and privilege information. Process-creation telemetry may record the command when configured; its content and alerting depend on audit policy and endpoint analytics.',
+  alt:'Use a scoped, approved identity and group-discovery simulation; confirm which endpoint and directory events are collected.',
+},
+net_group_da: {
+  name:'net group "Domain Admins" /domain', phase:'recon', mitre:'T1069.002',
+  confidence:'author-estimate', privReq:'domain_user', targets:['workstation','server'],
+  dims:{endpoint:4,network:3,identity:4,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process-creation telemetry may record net.exe when the relevant audit policy or endpoint sensor is enabled'},
+    {dim:'identity', tag:'AD audit',txt:'Domain-group query visibility depends on directory, RPC, and endpoint auditing configuration'},
+    {dim:'network',  tag:'Network', txt:'RPC/SAMR or directory traffic to a domain controller may be visible; ports and collection vary'},
+    {dim:'identity', tag:'Analytics',txt:'Group enumeration may be identified by command, directory, or network behavior in context'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'medium'},
+  timeline:[
+    {sensor:'Sysmon', cls:'sensor',ev:'Process activity and RPC/SAMR or directory-related traffic may be visible; protocols and collection vary'},
+    {sensor:'DC Log', cls:'sensor',ev:'Domain-group query observed if relevant directory/SAM auditing is enabled'},
+    {sensor:'EDR',    cls:'edr',  ev:'Endpoint or identity analytics may flag group-enumeration behavior when supported and configured'},
+    {sensor:'SIEM',   cls:'siem', ev:'Process, directory, and network events may be correlated when those sources are collected'},
+    {sensor:'SOC',    cls:'soc',  ev:'SOC review depends on alert confidence, local policy, and analyst workflow'},
+  ],
+  why:'The command queries domain-group membership through Windows directory/RPC interfaces. Process, directory, or network telemetry can help identify it, but event generation and alerting depend on audit policy, sensor configuration, and local baselines.',
+  alt:'Use a test group and an approved directory-query simulation; verify audit coverage and alert logic with the identity team.',
+},
+nmap_tcp: {
+  name:'nmap -sT (TCP Connect scan)', phase:'recon', mitre:'T1046',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server'],
+  dims:{endpoint:3,network:5,identity:0,forensics:2},
+  triggers:[
+    {dim:'network',tag:'Firewall',txt:'Reachable ports may create connection or flow records; coverage depends on firewall and target-service logging'},
+    {dim:'network',tag:'IDS',    txt:'IDS/IPS analytics may identify scan-like connection patterns when the relevant rules and thresholds are enabled'},
+    {dim:'network',tag:'Flow telemetry',txt:'Flow telemetry may record connections when the relevant network devices and collectors are configured'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'Firewall',cls:'sensor',ev:'Connection attempts may be recorded by network controls or flow collectors when configured'},
+    {sensor:'IDS',    cls:'edr',  ev:'Scan-like patterns may match enabled network analytics; rules and thresholds vary'},
+    {sensor:'SIEM',   cls:'siem', ev:'Flow records may show a source contacting multiple destination ports; interpretation depends on baseline'},
+    {sensor:'SOC',    cls:'soc',  ev:'SOC review and response depend on local policy and workflow'},
+  ],
+  why:'A TCP connect scan completes a handshake for reachable ports. Firewalls, network sensors, flow records, and target services may capture different parts of the activity; logging and alerting depend on configuration.',
+  alt:'Use an organization-approved asset inventory or a scoped scanner configuration, and confirm targets and monitoring with the system owner.',
+},
+nmap_syn: {
+  name:'nmap -sS (SYN scan)', phase:'recon', mitre:'T1046',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server'],
+  dims:{endpoint:1,network:3,identity:0,forensics:1},
+  triggers:[
+    {dim:'network',tag:'IDS',    txt:'Half-open SYN packets — volume-based scan rules above threshold'},
+    {dim:'network',tag:'Firewall',txt:'Partial TCP attempts visible in firewall deny logs'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Firewall',cls:'sensor',ev:'SYN packets to multiple ports — logged as denied attempts'},
+    {sensor:'IDS',    cls:'edr',  ev:'SYN scan rule may fire depending on rate and threshold'},
+  ],
+  why:'A SYN scan does not complete the TCP handshake in the same way as a connect scan. Network sensors may observe probes, while host application logs may not represent every attempt; visibility depends on the monitoring path. No sensor gap or detection outcome is assumed.',
+  alt:'For external exposure reviews, use approved asset-inventory or passive-intelligence sources and confirm scope with the system owner.',
+},
+bloodhound: {
+  name:'SharpHound (BloodHound collector)', phase:'recon', mitre:'T1087.002',
+  confidence:'author-estimate', privReq:'domain_user', targets:['workstation','server'],
+  dims:{endpoint:5,network:4,identity:5,forensics:4},
+  triggers:[
+    {dim:'identity', tag:'Event 4662',txt:'Directory-query volume may be available through configured directory, endpoint, or network telemetry; event coverage varies'},
+    {dim:'network',  tag:'Sysmon 3', txt:'Directory-service network connections may be recorded when the endpoint network sensor is configured'},
+    {dim:'endpoint', tag:'Event 4688',txt:'Process name and behavior may provide endpoint context; renaming does not determine whether activity is detected'},
+    {dim:'identity', tag:'MDI Alert',txt:'Identity analytics may identify unusual directory queries; alert names and conditions depend on product and configuration'},
+    {dim:'forensics',tag:'Disk',     txt:'BloodHound output JSON files remain on disk'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'high'},
+  timeline:[
+    {sensor:'DC LDAP', cls:'sensor',ev:'LDAP collection activity may be visible in directory or network telemetry, depending on configuration'},
+    {sensor:'MDI',     cls:'edr',  ev:'Identity analytics may correlate unusual directory collection; alerting depends on sensor coverage and policy'},
+    {sensor:'EDR',     cls:'edr',  ev:'Endpoint or identity analytics may add context to directory collection activity'},
+    {sensor:'SIEM',    cls:'siem', ev:'Correlation: LDAP burst + network anomaly from same source'},
+    {sensor:'SOC',     cls:'soc',  ev:'Investigation and response depend on collected telemetry, confidence, and local workflow'},
+  ],
+  why:'Directory collectors generate LDAP queries and may produce RPC, process, and network activity depending on collection mode. Review directory-query volume and source context alongside endpoint process lineage; a tool name alone is not a reliable detection signal.',
+  alt:'Use a vendor-approved directory-collection simulation in a scoped lab and validate which directory and endpoint events are actually collected.',
+},
+kerbrute: {
+  name:'kerbrute userenum', phase:'recon', mitre:'T1087.002',
+  confidence:'author-estimate', privReq:'none', targets:['workstation','server'],
+  dims:{endpoint:2,network:3,identity:4,forensics:1},
+  triggers:[
+    {dim:'identity', tag:'Event 4768',txt:'Event 4768 may record failed TGT requests with result code 0x6 for an unknown principal when failure auditing is enabled; other causes are possible'},
+    {dim:'network',  tag:'Kerberos', txt:'Kerberos traffic burst to DC port 88 — volume pattern visible'},
+    {dim:'identity', tag:'MDI Alert',txt:'Kerberos error bursts may be correlated by identity analytics; a specific alert is not guaranteed'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'DC Auth',cls:'sensor',ev:'Event 4768 may record failed TGT requests, including unknown-account result codes, when auditing is enabled'},
+    {sensor:'MDI',   cls:'edr',  ev:'Identity analytics may correlate repeated unknown-account results, depending on configuration'},
+    {sensor:'SIEM',  cls:'siem', ev:'An unusual volume of failed TGT requests may support investigation; thresholds are local'},
+  ],
+  why:'Event 4768 can record TGT request outcomes, including the unknown-principal result code 0x6 when the corresponding auditing is enabled. A burst of failures across accounts can support account-enumeration investigation; compare source, timing, and account outcomes with normal authentication patterns.',
+  alt:'Use approved test identities and a scoped detection simulation; confirm account-discovery telemetry with the identity team.',
+},
+// ── CREDENTIAL ACCESS ─────────────────────────────────────────
+mimi_disk: {
+  name:'mimikatz.exe sekurlsa::logonpasswords', phase:'creds', mitre:'T1003.001',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:5,network:0,identity:3,forensics:5},
+  triggers:[
+    {dim:'endpoint',tag:'AV Sig',    txt:'Known file or behavior indicators may be detected; coverage varies by product, version, and policy'},
+    {dim:'endpoint',tag:'Sysmon 10', txt:'Process-access telemetry may record access to LSASS when configured; process details and alerting vary'},
+    {dim:'identity', tag:'Event 4656',txt:'Security Event 4656 requires applicable audit policy and object SACL configuration; it is not guaranteed for LSASS access'},
+    {dim:'endpoint',tag:'MDE Alert', txt:'LSASS access may be blocked or alerted on when the relevant endpoint protections are enabled'},
+    {dim:'forensics',tag:'Disk',     txt:'mimikatz binary on disk — recoverable forensic artifact'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'high'},
+  timeline:[
+    {sensor:'AV',    cls:'edr',  ev:'Known file or behavior indicators may be blocked or alerted on by configured endpoint protections'},
+    {sensor:'EDR',   cls:'edr',  ev:'Endpoint analytics may flag suspicious LSASS access; product behavior and severity vary'},
+    {sensor:'SIEM',  cls:'siem', ev:'LSASS access may be correlated with other endpoint and identity signals when configured'},
+    {sensor:'SOC',   cls:'soc',  ev:'Response depends on alert confidence, severity policy, and analyst workflow'},
+  ],
+  why:'Credential-dumping tools must obtain access to LSASS memory, so configured process-access telemetry (including Sysmon Event 10 where enabled), endpoint behavior analytics, and dump-file monitoring can provide evidence. LSASS protections such as Credential Guard or protected-process settings can also affect access. Detection and blocking depend on policy and product configuration.',
+  alt:'Use an approved credential-access simulation in an isolated lab; validate LSASS protections, audit coverage, and response with the defenders.',
+},
+comsvcs_dump: {
+  name:'comsvcs.dll MiniDump (LOLBAS)', phase:'creds', mitre:'T1003.001',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:0,identity:2,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process and command-line telemetry may capture use of a Windows component; auditing and product analytics vary'},
+    {dim:'endpoint',tag:'Sysmon 10', txt:'LSASS process-access events require an appropriately configured sensor or audit policy'},
+    {dim:'endpoint',tag:'MDE',       txt:'A process invoking this Windows component may be visible to endpoint telemetry; product detections are not guaranteed'},
+    {dim:'forensics',tag:'Disk',     txt:'If output is written to disk, file telemetry may record it; output behavior depends on invocation'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'rundll32.exe + comsvcs.dll — image load + LSASS access'},
+    {sensor:'EDR',   cls:'edr',  ev:'Endpoint analytics may identify suspicious access patterns; no vendor rule or severity is assumed'},
+    {sensor:'EDR',   cls:'edr',  ev:'File-creation monitoring may record a written dump when configured'},
+  ],
+  why:'The built-in comsvcs component can be invoked through a Windows host process to create LSASS-related process-access and file activity. Process command-line collection, Sysmon Event 10 when configured, and file-creation telemetry are relevant review points; a familiar Microsoft binary does not make the behavior benign.',
+  alt:'Validate credential-dumping detections with a vendor-approved simulator and test data; do not collect real credentials during routine validation.',
+},
+nanodump: {
+  name:'nanodump (direct syscalls)', phase:'creds', mitre:'T1003.001',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:0,identity:1,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Sysmon 10',txt:'Configured endpoint sensors may record LSASS access; collection behavior varies by product and policy'},
+    {dim:'endpoint',tag:'ETW-TI',  txt:'System-call paths do not by themselves establish which endpoint telemetry is available'},
+    {dim:'forensics',tag:'Disk',   txt:'If output is created, memory or file artifacts depend on implementation and collection'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Kernel ETW',cls:'sensor',ev:'Endpoint telemetry may capture related process or memory behavior; collection and detections vary'},
+    {sensor:'Sysmon',   cls:'sensor',ev:'Sysmon Event 10 depends on Sysmon installation and process-access configuration'},
+  ],
+  why:'Tools may use different system-call paths, but that alone does not establish which endpoint controls can observe or block the behavior. Product, policy, and sensor configuration matter; this page has no comparative test evidence.',
+  alt:'Use an approved credential-access simulator with synthetic test data; validate LSASS protections and alerting without accessing real credentials.',
+},
+safetykatz: {
+  name:'SafetyKatz (in-memory .NET + HWBP)', phase:'creds', mitre:'T1003.001',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:0,identity:1,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'Sysmon 10',txt:'LSASS access event may fire — depth-dependent on kernel telemetry'},
+    {dim:'endpoint',tag:'AMSI',    txt:'AMSI inspection depends on a supported host, provider, and policy; no scan result is assumed'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'AMSI',  cls:'sensor',ev:'AMSI may inspect content presented by supported hosts when a compatible provider and policy are enabled'},
+    {sensor:'Sysmon',cls:'sensor',ev:'LSASS access event — may or may not fire based on config'},
+  ],
+  why:'In-memory loading can reduce some file artifacts but does not make process or LSASS access invisible. AMSI and endpoint visibility vary by runtime, product, policy, and implementation.',
+  alt:'Use an approved in-memory execution simulation in a dedicated lab and confirm that process, memory, and identity telemetry is retained.',
+},
+dcsync_all: {
+  name:'DCSync /all (lsadump::dcsync)', phase:'creds', mitre:'T1003.006',
+  confidence:'author-estimate', privReq:'ad_replication', targets:['workstation','server'],
+  dims:{endpoint:3,network:3,identity:5,forensics:3},
+  triggers:[
+    {dim:'identity', tag:'Event 4662',txt:'Replication-rights access may be recorded in Event 4662 when directory-service auditing and the relevant SACL are configured'},
+    {dim:'identity', tag:'DRSUAPI',txt:'Replication API activity from a non-DC source may be a signal; validate against authorized replication systems'},
+    {dim:'network',  tag:'Sysmon 3', txt:'Replication traffic may be visible in network telemetry when the path is monitored and the source is understood'},
+    {dim:'identity', tag:'Identity analytics',txt:'Microsoft documents alerts for suspicious replication activity; sensor and alert conditions apply'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'medium'},
+  timeline:[
+    {sensor:'DC Log',cls:'sensor',ev:'Event 4662 may record directory-object access when the required audit policy and SACL are configured'},
+    {sensor:'MDI',   cls:'edr',  ev:'Potentially suspicious directory replication activity; response depends on configured detections'},
+    {sensor:'SIEM',  cls:'siem', ev:'A non-authorized replication source may warrant investigation when network or identity telemetry is available'},
+    {sensor:'SOC',   cls:'soc',  ev:'Escalation depends on source authorization, alert confidence, and local response policy'},
+  ],
+  why:'DCSync abuses directory replication operations to request credential data. Event 4662 can support detection when directory-service auditing and the relevant SACL are configured. Correlate account and source against authorized replication systems; the event alone does not prove malicious activity.',
+  alt:'Validate authorized directory-replication detections with a scoped simulator; a smaller request does not guarantee invisibility or lower risk.',
+},
+dcsync_targeted: {
+  name:'DCSync /user:krbtgt (targeted)', phase:'creds', mitre:'T1003.006',
+  confidence:'author-estimate', privReq:'ad_replication', targets:['workstation','server'],
+  dims:{endpoint:2,network:2,identity:3,forensics:2},
+  triggers:[
+    {dim:'identity', tag:'Event 4662',txt:'Replication-rights activity may be logged when directory-service auditing and the object SACL are configured'},
+    {dim:'network',  tag:'Sysmon 3', txt:'DRSUAPI replication traffic may be visible to network monitoring; coverage depends on collection and baseline'},
+  ],
+  edrs:{mde:'medium',cs:'low',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'DC Log',cls:'sensor',ev:'Event 4662 may record directory access when the required audit policy and object SACL are configured'},
+    {sensor:'MDI',   cls:'edr',  ev:'Identity analytics may correlate replication activity from an unexpected source; validate alert conditions in the deployed product'},
+  ],
+  why:'The number and form of audit events depend on the request and audit configuration. Replication requires the relevant directory permissions, which may be delegated; identity, endpoint, or network telemetry may provide context.',
+  alt:'Use approved directory-replication test data in a lab; verify collection and response without extracting production credential databases.',
+},
+sam_registry: {
+  name:'SAM hive credential access', phase:'creds', mitre:'T1003.002',
+  confidence:'author-estimate', privReq:'system', targets:['workstation','server'],
+  dims:{endpoint:3,network:0,identity:0,forensics:4},
+  triggers:[
+    {dim:'endpoint',tag:'Registry access',txt:'Access to protected SAM data or adjacent credential stores may be visible when registry and endpoint telemetry are configured'},
+    {dim:'forensics',tag:'Hive copy',txt:'Unexpected creation of credential-hive copies plus privileged process activity can support investigation'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'Endpoint',cls:'sensor',ev:'A privileged process accesses local credential-store data; event coverage depends on configured auditing'},
+    {sensor:'EDR',cls:'edr',ev:'Endpoint analytics may correlate privileged registry access, file creation, and process lineage when supported'},
+    {sensor:'SIEM',cls:'siem',ev:'Correlate the process, account, host, and any resulting hive-copy artifacts'},
+  ],
+  why:'The SAM database contains local account data, and ATT&CK notes that enumeration requires SYSTEM-level access. Investigations can correlate privileged process activity, registry access, and unexpected copy artifacts; auditing and endpoint coverage vary.',
+  alt:'Use synthetic local accounts in an isolated lab; validate access controls and telemetry without exporting production credential stores.',
+  refs:[
+    {label:'MITRE ATT&CK — T1003.002',url:'https://attack.mitre.org/techniques/T1003/002/'},
+  ],
+},
+credential_manager: {
+  name:'Windows Credential Manager access', phase:'creds', mitre:'T1555.004',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server'],
+  dims:{endpoint:3,network:0,identity:1,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Process / API',txt:'Unexpected credential-store enumeration or access by a process outside the user’s normal workflow'},
+    {dim:'forensics',tag:'Credential Locker',txt:'Access to .vcrd or .vpol files may be visible when file telemetry covers the user profile'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'Endpoint',cls:'sensor',ev:'A process accesses Windows Credential Manager or related Credential Locker files'},
+    {sensor:'EDR',cls:'edr',ev:'Configured analytics may correlate unusual process execution with credential-store file access'},
+    {sensor:'SIEM',cls:'siem',ev:'Review user, process, file path, and subsequent authentication context'},
+  ],
+  why:'Windows Credential Manager stores website, application, and network credentials in Credential Lockers. MITRE describes detection analytics that correlate unusual process or API activity with access to .vcrd and .vpol files; coverage depends on endpoint telemetry.',
+  alt:'Use a dedicated test account with synthetic stored credentials; verify file-access visibility and response without touching real user secrets.',
+  refs:[
+    {label:'MITRE ATT&CK — T1555.004',url:'https://attack.mitre.org/techniques/T1555/004/'},
+  ],
+},
+// ── KERBEROS ─────────────────────────────────────────
+kerberoast_bulk: {
+  name:'Invoke-Kerberoast (all SPNs, bulk)', phase:'kerberos', mitre:'T1558.003',
+  confidence:'author-estimate', privReq:'domain_user', targets:['workstation','server'],
+  dims:{endpoint:3,network:2,identity:5,forensics:2},
+  triggers:[
+    {dim:'identity', tag:'Event 4769',txt:'Burst of TGS requests — multiple SPNs, RC4 encryption type 0x17'},
+    {dim:'identity', tag:'MDE Alert',txt:'Identity analytics may correlate unusual service-ticket volume or encryption types; product-specific alerting varies'},
+    {dim:'identity', tag:'CS IOA',   txt:'Endpoint or identity analytics may correlate unusual service-ticket requests; behavior varies by deployment'},
+    {dim:'identity', tag:'SIEM',     txt:'Unusual TGS volume or encryption use may support correlation; thresholds and baselines are environment-specific'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'medium'},
+  timeline:[
+    {sensor:'DC KDC', cls:'sensor',ev:'Event 4769 may show service-ticket requests and encryption type when relevant auditing is enabled'},
+    {sensor:'MDI',    cls:'edr',  ev:'Identity analytics may correlate unusual service-ticket activity; no alert or timing is assumed'},
+    {sensor:'SIEM',   cls:'siem', ev:'Ticket volume, encryption type, account, and source may be considered together against local baselines'},
+    {sensor:'SOC',    cls:'soc',  ev:'Investigation and response depend on collected evidence and local workflow'},
+  ],
+  why:'Bulk service-ticket requests can create a noticeable volume of Event 4769 records when KDC auditing is enabled. RC4 (0x17) is a useful context signal but is not proof of Kerberoasting or a forced downgrade; legacy account and domain configuration can also explain it.',
+  alt:'Use a vendor-approved Kerberos simulation in a scoped lab; review Event 4769 collection and alert thresholds with the identity team.',
+},
+kerberoast_targeted: {
+  name:'Rubeus kerberoast /user:target', phase:'kerberos', mitre:'T1558.003',
+  confidence:'author-estimate', privReq:'domain_user', targets:['workstation','server'],
+  dims:{endpoint:1,network:1,identity:2,forensics:1},
+  triggers:[
+    {dim:'identity', tag:'Event 4769',txt:'A service-ticket request can be routine; account, service, encryption type, source, and surrounding activity provide context'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'DC KDC',cls:'sensor',ev:'Event 4769 may record a service-ticket request; interpretation depends on account and environment context'},
+  ],
+  why:'A single service-ticket request can resemble routine authentication, but its context, service account, encryption type, and surrounding activity may still be relevant. It is not inherently indistinguishable or undetectable.',
+  alt:'A targeted request can still be visible in domain-controller telemetry. Validate service-ticket monitoring with a scoped simulation and an approved account.',
+},
+golden_ticket: {
+  name:'Golden Ticket (forged TGT offline)', phase:'kerberos', mitre:'T1558.001',
+  confidence:'author-estimate', privReq:'krbtgt_key', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:1,identity:4,forensics:2},
+  triggers:[
+    {dim:'identity', tag:'Event 4624',txt:'Logon and service telemetry may provide context for ticket analysis; this event alone does not establish a forged ticket'},
+    {dim:'identity', tag:'MDI Alert',txt:'Microsoft Defender for Identity documents Golden Ticket detections; conditions depend on coverage and product configuration'},
+    {dim:'identity', tag:'Anomaly',  txt:'Ticket fields (encryption, PAC structure) differ from DC-issued TGTs'},
+  ],
+  edrs:{mde:'high',cs:'medium',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'MDI',  cls:'edr',  ev:'Identity analytics may identify suspicious ticket activity when the relevant detection is supported and configured'},
+    {sensor:'SIEM', cls:'siem', ev:'Kerberos ticket and service activity may be investigated with surrounding identity context'},
+    {sensor:'SOC',  cls:'soc',  ev:'Review and response depend on evidence, confidence, and local policy'},
+  ],
+  why:'Golden Ticket investigations examine Kerberos ticket and logon context for inconsistencies with tickets issued by domain controllers. Microsoft Defender for Identity documents detections for this behavior; domain-controller and service-host telemetry, sensor coverage, and the deployed product configuration determine what is available.',
+  alt:'Ticket-forgery test scenarios require explicit authorization and specialist review; a ticket that began as legitimate is not guaranteed to evade identity detections.',
+},
+diamond_ticket: {
+  name:'Diamond Ticket', phase:'kerberos', mitre:'T1558.001',
+  confidence:'author-estimate', privReq:'krbtgt_key', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:1,identity:2,forensics:1},
+  triggers:[
+    {dim:'identity', tag:'Event 4768',txt:'TGT request events may provide context, but a forged-ticket workflow does not necessarily produce a corresponding issuance event'},
+    {dim:'identity', tag:'Minimal',  txt:'Ticket anomalies may or may not be surfaced; product behavior must be validated in the target deployment'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'DC KDC',cls:'sensor',ev:'Event 4768 may record TGT requests when auditing is enabled; event presence alone does not establish a forged ticket'},
+    {sensor:'MDI',   cls:'edr',  ev:'Alert outcome is deployment- and scenario-dependent; absence of an alert is not proof of invisibility'},
+  ],
+  why:'Diamond Ticket is a ticket-forgery variant whose telemetry and detection depend on implementation, service use, sensor coverage, and product configuration. No Microsoft Defender for Identity outcome is inferred from the technique name, and this page has no validation data.',
+  alt:'Use an approved Kerberos validation scenario and review service-host as well as domain-controller telemetry.',
+},
+silver_ticket: {
+  name:'Silver Ticket', phase:'kerberos', mitre:'T1558.002',
+  confidence:'author-estimate', privReq:'service_key', targets:['server','dc'],
+  dims:{endpoint:1,network:1,identity:0,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4624',txt:'The service host may record the authentication; lack of a corresponding KDC request does not mean the activity is invisible'},
+    {dim:'network', tag:'Kerberos', txt:'A forged service ticket may be presented without a corresponding KDC ticket request; service-host telemetry may still be available'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'none',cb:'none'},
+  timeline:[
+    {sensor:'Target Host',cls:'sensor',ev:'The service host may record a Kerberos logon; a matching DC ticket-request event may be absent'},
+  ],
+  why:'A Silver Ticket is presented to a service without the ordinary KDC service-ticket request for that use, so a matching Event 4769 may be absent. The target service can still record the logon, and endpoint process activity can provide context; check service-host and domain-controller records together.',
+  alt:'Review service-host authentication and endpoint telemetry; do not treat missing KDC events as proof that the activity is undetectable.',
+},
+asrep_roasting: {
+  name:'AS-REP Roasting (bulk)', phase:'kerberos', mitre:'T1558.004',
+  confidence:'author-estimate', privReq:'none', targets:['workstation','server'],
+  dims:{endpoint:2,network:2,identity:4,forensics:1},
+  triggers:[
+    {dim:'identity', tag:'Event 4768',txt:'AS-REQ without pre-authentication may be visible in Event 4768 when the relevant audit policy is enabled'},
+    {dim:'identity', tag:'MDI Alert',txt:'Microsoft Defender for Identity documents AS-REP roasting detections; conditions depend on sensor coverage and configuration'},
+    {dim:'network',  tag:'Kerberos', txt:'AS-REQ without PA-ENC-TIMESTAMP padata — detectable in packet capture'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'DC KDC',cls:'sensor',ev:'Event 4768 may record TGT requests for accounts without pre-authentication when auditing is enabled'},
+    {sensor:'MDI',   cls:'edr',  ev:'Identity analytics may identify requests for accounts without pre-authentication; alert conditions vary'},
+  ],
+  why:'Accounts configured without Kerberos pre-authentication can receive AS-REP responses without the usual pre-authentication exchange. Event visibility and identity-product alerts depend on audit policy, sensor coverage, and product configuration.',
+  alt:'Validate detection using an approved simulation account and confirm that failed and successful TGT requests are audited and reviewed.',
+},
+pass_ticket: {
+  name:'Pass-the-Ticket (Kerberos)', phase:'kerberos', mitre:'T1550.003',
+  confidence:'author-estimate', privReq:'ticket_material', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:1,identity:4,forensics:2},
+  triggers:[
+    {dim:'identity',tag:'Authentication context',txt:'A ticket-backed logon from an unusual account, source host, or time may merit correlation with normal user activity'},
+    {dim:'endpoint',tag:'Target logon',txt:'The destination host may record a successful logon; event detail depends on authentication path and audit configuration'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'Identity',cls:'sensor',ev:'A Kerberos ticket is presented to access a service or remote host'},
+    {sensor:'Target Host',cls:'sensor',ev:'Authentication and logon context may be available on the destination'},
+    {sensor:'SIEM',cls:'siem',ev:'Correlate account, source, destination, and expected interactive activity when those records are collected'},
+  ],
+  why:'Pass-the-Ticket uses an existing Kerberos ticket to authenticate without supplying the account password. MITRE places the behavior under Lateral Movement; unusual ticket-backed logons need account, source, destination, and session context to distinguish them from routine activity.',
+  alt:'Use an approved identity simulation with test accounts and synthetic tickets; confirm domain-controller and target-host logon collection without handling production tickets.',
+  refs:[
+    {label:'MITRE ATT&CK — T1550.003',url:'https://attack.mitre.org/techniques/T1550/003/'},
+    {label:'MITRE detection strategy — Pass the Ticket',url:'https://attack.mitre.org/detectionstrategies/DET0352/'},
+  ],
+},
+// ── LATERAL MOVEMENT ─────────────────────────────────────────
+lateral_psexec: {
+  name:'PsExec', phase:'lateral', mitre:'T1569.002',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:5,network:3,identity:3,forensics:5},
+  triggers:[
+    {dim:'endpoint',tag:'Event 7045',txt:'System Event 7045 may record service installation; system-log collection and retention depend on configuration'},
+    {dim:'endpoint',tag:'Sysmon 17', txt:'Sysmon Event 17 can record named-pipe creation when Sysmon is installed and the event is included'},
+    {dim:'network',  tag:'Sysmon 3', txt:'SMB connection to target port 445'},
+    {dim:'identity', tag:'Event 4697',txt:'Security Event 4697 requires the applicable service-installation audit policy; System Event 7045 may also be available'},
+    {dim:'forensics',tag:'Disk',     txt:'Service and file artifacts depend on the utility version, invocation, and cleanup'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'high'},
+  timeline:[
+    {sensor:'Target Host',cls:'sensor',ev:'System Event 7045 may record service installation on the target'},
+    {sensor:'EDR',        cls:'edr',  ev:'Service and named-pipe telemetry may be correlated when collected; no fixed alert or severity is assumed'},
+    {sensor:'SIEM',       cls:'siem', ev:'Remote-service activity may be correlated with authentication and SMB context'},
+    {sensor:'SOC',        cls:'soc',  ev:'SOC response depends on local policy, severity, and analyst workflow'},
+  ],
+  why:'The Sysinternals PsExec utility can create a remote service and use SMB/named-pipe activity, depending on version and invocation. These behaviors may be logged when the corresponding host and network telemetry is enabled; neither a fixed signature nor a response outcome is guaranteed.',
+  alt:'Use a vendor-approved lateral-movement simulation in an isolated lab; validate authentication, service, process, and network telemetry with system owners.',
+  refs:[
+    {label:'MITRE ATT&CK — T1569.002',url:'https://attack.mitre.org/techniques/T1569/002/'},
+  ],
+},
+wmi_exec: {
+  name:'WMI Exec (Win32_Process::Create)', phase:'lateral', mitre:'T1047',
+  confidence:'author-estimate', privReq:'remote_wmi', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:2,identity:2,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process-creation telemetry may show WMI-related ancestry when process auditing is enabled'},
+    {dim:'endpoint',tag:'Sysmon 1',  txt:'Sysmon Event 1 can record process creation when Sysmon is installed and configured; parent context alone does not prove malicious activity'},
+    {dim:'network',  tag:'Sysmon 3', txt:'RPC/WMI network activity may be visible when the relevant network path is monitored'},
+    {dim:'identity', tag:'Event 4648',txt:'Explicit credential logon if alternate creds used'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'Target EDR',cls:'edr',ev:'Process ancestry and resulting activity may be considered by configured endpoint analytics'},
+    {sensor:'SIEM',      cls:'siem',ev:'WMI, authentication, and process telemetry may provide investigative context when collected'},
+  ],
+  why:'Remote WMI activity may be visible through WMI, RPC, process-creation, and authentication telemetry. The process tree and resulting activity matter; collection and response vary by host policy and endpoint controls.',
+  alt:'Use an approved remote-management simulation with harmless actions; verify WMI, RPC, authentication, and process telemetry.',
+},
+dcom_mmc: {
+  name:'DCOM MMC20.Application', phase:'lateral', mitre:'T1021.003',
+  confidence:'author-estimate', privReq:'remote_dcom', targets:['workstation','server'],
+  dims:{endpoint:2,network:2,identity:2,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process telemetry may record MMC activity; a legitimate image name does not establish benign intent'},
+    {dim:'network',  tag:'Sysmon 3', txt:'DCOM/RPC network activity may be visible; interpretation depends on monitoring and administrative baseline'},
+    {dim:'identity', tag:'Event 4648',txt:'Explicit credential logon if alternate credentials used'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Target Host',cls:'sensor',ev:'Process lineage and remote-activation context may be available to endpoint and network monitoring'},
+    {sensor:'EDR',        cls:'edr',  ev:'DCOM execution — low confidence detection, context-dependent'},
+  ],
+  why:'DCOM can create process and RPC activity that may be visible in host and network telemetry. A legitimate process name does not make the behavior benign or guarantee a low detection likelihood.',
+  alt:'Use an approved DCOM validation scenario with benign activity; confirm remote-activation permissions and telemetry with the system owner.',
+},
+winrm: {
+  name:'WinRM (Evil-WinRM / Invoke-Command)', phase:'lateral', mitre:'T1021.006',
+  confidence:'author-estimate', privReq:'winrm_access', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:2,identity:2,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'wsmprovhost.exe spawned on target — known WinRM host process'},
+    {dim:'network',  tag:'Sysmon 3', txt:'Network connection to port 5985 (HTTP) or 5986 (HTTPS)'},
+    {dim:'identity', tag:'Event 4624',txt:'Event 4624 type 3 is a network logon, not unique to WinRM; correlate it with WinRM and process telemetry where collected'},
+  ],
+  edrs:{mde:'medium',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Target Host',cls:'sensor',ev:'A WinRM session may create wsmprovhost.exe process activity on the target'},
+    {sensor:'EDR',        cls:'edr',  ev:'Endpoint analytics may consider WinRM process ancestry and resulting activity; behavior varies'},
+  ],
+  why:'WinRM is a legitimate remote-management protocol, so its presence alone does not establish malicious activity. Ports, process lineage, authentication, policy, and expected administrative use provide context; detection is deployment-specific.',
+  alt:'Use a sanctioned WinRM simulation with harmless commands; validate authorization, logging, and response with the server owner.',
+},
+overpass_hash: {
+  name:'Overpass-the-Hash (NTLM → Kerberos TGT)', phase:'lateral', mitre:'T1550.002',
+  confidence:'author-estimate', privReq:'credential_material', targets:['workstation','server'],
+  dims:{endpoint:2,network:2,identity:3,forensics:1},
+  triggers:[
+    {dim:'identity', tag:'Event 4768',txt:'A TGT request may appear in Event 4768; this event does not reveal the credential material used'},
+    {dim:'identity', tag:'Event 4624',txt:'A later logon may show Kerberos authentication; event type and fields do not establish which credential material was used'},
+    {dim:'network',  tag:'Kerberos', txt:'AS-REQ from unusual host for high-privileged account'},
+  ],
+  edrs:{mde:'medium',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'DC KDC', cls:'sensor',ev:'A Kerberos TGT request may be logged; the event does not reveal credential material by itself'},
+    {sensor:'MDI',    cls:'edr',  ev:'Identity analytics may consider account, source host, and logon context; alert rules vary'},
+  ],
+  why:'Overpass-the-Hash uses NTLM credential material in a Kerberos authentication flow. Domain-controller and endpoint telemetry may reveal unusual account, source, or logon patterns; Kerberos use is not inherently less suspicious.',
+  alt:'Test authentication detections with approved credentials and a scoped simulation; correlate source host, account, and logon context.',
+},
+rdp: {
+  name:'Remote Desktop Protocol (RDP)', phase:'lateral', mitre:'T1021.001',
+  confidence:'author-estimate', privReq:'rdp_access', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:2,identity:3,forensics:2},
+  triggers:[
+    {dim:'identity',tag:'Event 4624',txt:'Logon Type 10 identifies a RemoteInteractive logon; account and source context still determine whether it is expected'},
+    {dim:'endpoint',tag:'Post-logon activity',txt:'Unexpected process execution, file access, or follow-on remote activity after an RDP logon may add context'},
+    {dim:'network',tag:'RDP session',txt:'Connection metadata may be available at network controls when the path is monitored'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'Target Host',cls:'sensor',ev:'A RemoteInteractive logon may appear as Security Event 4624, Logon Type 10'},
+    {sensor:'Endpoint',cls:'sensor',ev:'Process and file activity after the remote session may be collected when configured'},
+    {sensor:'SIEM',cls:'siem',ev:'MITRE describes multi-event analysis of RDP logon followed by unusual post-access activity'},
+  ],
+  why:'RDP is a legitimate administration path and a common lateral-movement channel. Event 4624 Logon Type 10 identifies a RemoteInteractive logon; account, source, destination, and activity after logon determine investigative value.',
+  alt:'Validate RDP controls with an approved test account; confirm expected source restrictions, log retention, and post-logon process visibility with the host owner.',
+  refs:[
+    {label:'MITRE ATT&CK — T1021.001',url:'https://attack.mitre.org/techniques/T1021/001/'},
+    {label:'Microsoft Learn — Event 4624',url:'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4624'},
+  ],
+},
+smb_admin_share: {
+  name:'SMB / Windows Admin Share access', phase:'lateral', mitre:'T1021.002',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:3,identity:2,forensics:3},
+  triggers:[
+    {dim:'network',tag:'SMB session',txt:'SMB connections and share access may be visible on the network path when monitored'},
+    {dim:'identity',tag:'Event 5140',txt:'Audit File Share can record network-share access; Event 5140 is generated on first access per session when auditing is enabled'},
+    {dim:'forensics',tag:'Share access',txt:'Account, source address, share name, and subsequent file/process activity provide useful context'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'medium',cb:'low'},
+  timeline:[
+    {sensor:'File Server',cls:'sensor',ev:'An SMB client accesses a network share; share auditing determines whether Security Event 5140 is collected'},
+    {sensor:'Network',cls:'sensor',ev:'SMB session metadata may be available from network monitoring'},
+    {sensor:'SIEM',cls:'siem',ev:'Compare source host and account with expected administrative or file-share activity'},
+  ],
+  why:'SMB admin shares support legitimate remote administration, file access, and remote execution workflows. This entry models share access itself; it is related to but distinct from PsExec’s temporary-service execution. Event 5140 requires Audit File Share and should be interpreted against expected sources.',
+  alt:'Use a scoped test account and benign file in an approved lab; verify share auditing and source baselines without transferring executables or sensitive data.',
+  refs:[
+    {label:'MITRE ATT&CK — T1021.002',url:'https://attack.mitre.org/techniques/T1021/002/'},
+    {label:'Microsoft Learn — Event 5140',url:'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-5140'},
+  ],
+},
+// ── DEFENSE EVASION ─────────────────────────────────────────
+ps_encoded: {
+  name:'PowerShell -EncodedCommand', phase:'evasion', mitre:'T1059.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:4,network:0,identity:0,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4688',txt:'Process-creation logs may capture the PowerShell command line when process auditing is enabled'},
+    {dim:'endpoint',tag:'Event 4104',txt:'When enabled, PowerShell Script Block Logging may record processed script content in Event 4104; AMSI is a separate scanning interface'},
+    {dim:'endpoint',tag:'AMSI',     txt:'AMSI may inspect content presented by a supported host; coverage depends on the host, provider, and policy'},
+    {dim:'forensics',tag:'Log',     txt:'Event 4104 may contain script-block content when Script Block Logging is enabled and functioning'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'medium'},
+  timeline:[
+    {sensor:'AMSI',  cls:'sensor',ev:'A supported host and provider may inspect content; encoding does not guarantee that content is hidden'},
+    {sensor:'Event 4104',cls:'sensor',ev:'Event 4104 may record script-block content when Script Block Logging is enabled'},
+    {sensor:'EDR',   cls:'edr',  ev:'Command-line, script-block, and endpoint analytics may record or alert on encoded-command activity when configured'},
+    {sensor:'SIEM',  cls:'siem', ev:'T1059.001 alert correlated with other events'},
+  ],
+  why:'Encoding a PowerShell command does not make it invisible. Event 4104 content logging requires Script Block Logging, while AMSI behavior depends on host and provider support. Process, command-line, and other endpoint telemetry may still provide signals.',
+  alt:'Use an approved PowerShell simulation; confirm command-line, Script Block Logging, and AMSI-related telemetry with the platform owner.',
+},
+amsi_patch: {
+  name:'AMSI bypass — AmsiScanBuffer memory patch', phase:'evasion', mitre:'T1562.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:0,identity:0,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'ETW-TI',   txt:'Memory modification may be visible to endpoint protections; ETW-TI availability and product alerting vary'},
+    {dim:'endpoint',tag:'MDE Alert',txt:'Product-specific detections may exist for known tampering patterns; coverage is not guaranteed'},
+    {dim:'endpoint',tag:'Memory',   txt:'Memory-integrity monitoring may identify changes to inspection-related code; coverage depends on endpoint tooling'},
+    {dim:'forensics',tag:'Memory',  txt:'Patched bytes visible in memory forensics dump'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'low'},
+  timeline:[
+    {sensor:'ETW-TI',cls:'sensor',ev:'Endpoint protections may alert on inspection tampering when supported and configured'},
+    {sensor:'EDR',   cls:'edr',  ev:'Endpoint analytics may flag known tampering behavior when supported and configured'},
+  ],
+  why:'AMSI tampering behavior and detection coverage vary by operating-system build, endpoint product, policy, and implementation. This page has no reproducible vendor test results and cannot predict a detection outcome.',
+  alt:'Validate AMSI and endpoint tamper protections with an approved simulator in an isolated, authorized lab.',
+},
+amsi_hwbp: {
+  name:'AMSI bypass — Hardware Breakpoint (HWBP)', phase:'evasion', mitre:'T1562.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:0,identity:0,forensics:0},
+  triggers:[
+    {dim:'endpoint',tag:'Debug Regs',txt:'Hardware-breakpoint behavior is implementation-specific; the absence of a memory patch does not establish absence of telemetry'},
+    {dim:'endpoint',tag:'Kernel ETW',txt:'Visibility into debug-register behavior depends on operating-system and endpoint instrumentation'},
+  ],
+  edrs:{mde:'none',cs:'none',s1:'none',cb:'none'},
+  timeline:[
+    {sensor:'Sensor',cls:'sensor',ev:'Telemetry and alerting for this behavior vary by implementation and endpoint configuration'},
+  ],
+  why:'Hardware-breakpoint approaches are implementation-specific. A lack of byte changes does not prove that endpoint or behavioral telemetry is absent; this page does not validate detection coverage for any product.',
+  alt:'Use an approved AMSI test harness to verify the intended inspection and alert path; do not infer safety from a low score.',
+},
+direct_syscalls: {
+  name:'Direct Syscalls (SysWhispers / Havoc)', phase:'evasion', mitre:'T1106',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:0,identity:0,forensics:0},
+  triggers:[
+    {dim:'endpoint',tag:'ETW-TI',  txt:'Unusual native-API call paths may be considered by some endpoint analytics; product behavior varies'},
+    {dim:'endpoint',tag:'CS Stack',txt:'Call-stack and native-API telemetry may be available in some products; no vendor-specific result is assumed'},
+  ],
+  edrs:{mde:'none',cs:'low',s1:'none',cb:'none'},
+  timeline:[
+    {sensor:'Kernel',cls:'sensor',ev:'Native-API behavior may be visible to endpoint analytics; collection and alert logic vary'},
+  ],
+  why:'Direct system-call paths may avoid some user-mode instrumentation, but they do not bypass all endpoint controls or guarantee invisibility. Kernel, memory, call-stack, and behavioral telemetry vary by product and configuration.',
+  alt:'Use an approved endpoint-control simulation; compare observed process, memory, and call-stack telemetry with the platform owner.',
+},
+etw_patch: {
+  name:'ETW-TI / sensor tampering', phase:'evasion', mitre:'T1562.001',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:0,identity:0,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'EDR Detect',txt:'Sensor tampering may be detectable through product-specific tamper controls or telemetry-health monitoring'},
+    {dim:'endpoint',tag:'Kernel',    txt:'Telemetry impairment can affect observability, but the affected providers and consumers depend on implementation'},
+    {dim:'forensics',tag:'Memory',   txt:'Patched bytes visible to memory forensics if acquired during session'},
+  ],
+  edrs:{mde:'medium',cs:'medium',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'EDR Kernel',cls:'sensor',ev:'Sensor-health and tamper alerts depend on product support, policy, and configuration'},
+    {sensor:'SIEM',      cls:'siem', ev:'Telemetry gap detected: events missing from expected source'},
+  ],
+  why:'ETW or sensor tampering is implementation-specific and can destabilize a system. The function, effect, privileges, and detection path cannot be generalized from this heuristic. Test sensor tamper protection only in a dedicated, approved lab.',
+  alt:'Treat telemetry interruption as a control failure. Validate sensor health monitoring and tamper alerts using a vendor-approved test procedure.',
+},
+sleep_obfuscation: {
+  name:'Sleep Obfuscation (Ekko / Foliage)', phase:'evasion', mitre:'T1055',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:0,identity:0,forensics:1},
+  triggers:[
+    {dim:'endpoint',tag:'Memory',txt:'Memory visibility during a sleep state depends on scanner timing, implementation, and endpoint instrumentation'},
+    {dim:'endpoint',tag:'Timing', txt:'Timer and memory behavior may still be observable; using legitimate APIs does not establish benignity'},
+    {dim:'forensics',tag:'Memory',txt:'If memory snapshot taken while beacon is awake, shellcode is briefly decrypted'},
+  ],
+  edrs:{mde:'none',cs:'none',s1:'none',cb:'none'},
+  timeline:[
+    {sensor:'Memory Scanner',cls:'sensor',ev:'A memory scan may produce different results depending on timing and collection method'},
+  ],
+  why:'Some implementations alter in-memory content during idle periods, but scanner timing and other behavioral signals still matter. No endpoint product can be assumed to miss the activity based on this description.',
+  alt:'Validate memory-scanning and behavioral detections with an approved simulator and a documented test window.',
+},
+// ── C2 ─────────────────────────────────────────
+cs_default: {
+  name:'Default Cobalt Strike HTTP profile', phase:'c2', mitre:'T1071.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:3,network:5,identity:0,forensics:2},
+  triggers:[
+    {dim:'network',tag:'Proxy',   txt:'Network signatures may match known indicators associated with particular tool versions or profiles'},
+    {dim:'network',tag:'JA3',     txt:'Network indicators can vary by Cobalt Strike version and profile; reputation and fingerprint coverage are not universal'},
+    {dim:'network',tag:'Header',  txt:'HTTP headers may be available to web controls; values vary by tool version and profile'},
+    {dim:'network',tag:'NGFW',    txt:'Some network products or threat feeds may recognize known indicators; rules and coverage vary'},
+    {dim:'forensics',tag:'Proxy Log',txt:'Proxy logs may retain request metadata according to local retention and inspection policy'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'high'},
+  timeline:[
+    {sensor:'Proxy',cls:'sensor',ev:'Web controls may block or alert on known indicators when a matching rule is enabled'},
+    {sensor:'NGFW', cls:'edr',  ev:'Network analytics may identify known indicators; coverage depends on the deployed rules'},
+    {sensor:'SIEM', cls:'siem', ev:'Threat-intelligence or behavioral context may contribute to an investigation; a signature match alone is not confirmation'},
+    {sensor:'SOC',  cls:'soc',  ev:'Blocking and response depend on policy and SOC workflow'},
+  ],
+  why:'Known Cobalt Strike defaults may be easier to recognize, but profiles and indicators vary by release and configuration. A user-agent or signature is not a universal alert condition, and this page cannot predict SOC timing.',
+  alt:'Use a vendor-approved C2 simulation in a dedicated lab; review HTTP, DNS, TLS, and egress controls with the defenders.',
+},
+cs_malleable: {
+  name:'Malleable C2 (custom SaaS-mimicking profile)', phase:'c2', mitre:'T1071.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:2,identity:0,forensics:1},
+  triggers:[
+    {dim:'network',tag:'Proxy', txt:'Traffic that resembles common services can still be analyzed by domain, certificate, process, and behavioral context'},
+    {dim:'network',tag:'Timing',txt:'Repeated timing patterns may be useful to analytics; detection thresholds and models are deployment-specific'},
+    {dim:'network',tag:'Domain',txt:'Domain age and reputation may be considered by some controls; feeds, thresholds, and exceptions vary'},
+    {dim:'forensics',tag:'Proxy Log',txt:'Custom URIs still logged — forensic analysis can identify C2 pattern post-incident'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Proxy',cls:'sensor',ev:'Allow or alert decisions depend on domain policy, process context, and network analytics'},
+    {sensor:'ML',   cls:'edr',  ev:'Repeated request timing may be considered by analytics; models and thresholds are deployment-specific'},
+  ],
+  why:'Protocol resemblance does not guarantee that C2 traffic will evade detection. Domain reputation, process lineage, TLS, request behavior, and timing may all be monitored; exact coverage and scoring are unvalidated here.',
+  alt:'Use a sanctioned simulation domain to validate DNS, HTTPS, and egress monitoring with the network owner.',
+},
+dns_c2: {
+  name:'DNS C2 (TXT/NULL record tunneling)', phase:'c2', mitre:'T1071.004',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:1,network:2,identity:0,forensics:1},
+  triggers:[
+    {dim:'network',tag:'DNS',   txt:'DNS TXT/NULL record queries to attacker domain — inspectable at resolver'},
+    {dim:'network',tag:'Volume',txt:'High TXT query volume to single domain is anomalous in DNS logs'},
+    {dim:'network',tag:'Entropy',txt:'Resolver analytics may examine unusual query volume or label characteristics; product behavior varies'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'DNS Resolver',cls:'sensor',ev:'TXT record queries to external domain — logged at resolver'},
+    {sensor:'Umbrella',   cls:'edr',  ev:'DNS analytics may flag unusual query patterns when supported and configured'},
+  ],
+  why:'DNS traffic may follow a path separate from an HTTP proxy, but resolver controls, egress policy, endpoint sensors, and network monitoring can still provide visibility or block it. DoH and DNS tunneling are not inherently unobservable or difficult to control.',
+  alt:'Validate DNS and DNS-over-HTTPS policy with a sanctioned simulation; confirm resolver, endpoint, and egress logs with the network owner.',
+},
+// ── PERSISTENCE ─────────────────────────────────────────
+scheduled_task: {
+  name:'Scheduled Task creation / persistence', phase:'persistence', mitre:'T1053.005',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:4,network:0,identity:1,forensics:4},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4698',txt:'Security Event 4698 records task creation when the applicable audit policy is enabled'},
+    {dim:'endpoint',tag:'Process lineage',txt:'Task creation followed by an unusual scheduled process may provide stronger context than the task name alone'},
+    {dim:'forensics',tag:'Task definition',txt:'Task metadata and its configured action can be reviewed during endpoint or forensic investigation'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'medium',cb:'medium'},
+  timeline:[
+    {sensor:'Security Log',cls:'sensor',ev:'Event 4698 may record a new task when Audit Other Object Access Events is enabled'},
+    {sensor:'Endpoint',cls:'sensor',ev:'The task action may later create process activity under its configured account'},
+    {sensor:'SIEM',cls:'siem',ev:'Review task creator, task content, host role, and expected software-management activity'},
+  ],
+  why:'Windows Task Scheduler is used for routine administration and can also support recurring execution or persistence. Microsoft documents Security Event 4698 for task creation; correlate creator, task content, host, and resulting process activity rather than alerting on every task.',
+  alt:'Create a benign, short-lived scheduled task in an isolated lab using a test account; verify Event 4698 collection and task inventory review.',
+  refs:[
+    {label:'MITRE ATT&CK — T1053.005',url:'https://attack.mitre.org/techniques/T1053/005/'},
+    {label:'Microsoft Learn — Event 4698',url:'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4698'},
+  ],
+},
+windows_service_persistence: {
+  name:'Windows Service persistence', phase:'persistence', mitre:'T1543.003',
+  confidence:'author-estimate', privReq:'local_admin', targets:['workstation','server','dc'],
+  dims:{endpoint:4,network:0,identity:1,forensics:4},
+  triggers:[
+    {dim:'endpoint',tag:'Event 4697',txt:'Security Event 4697 can record service installation when the applicable audit policy is enabled'},
+    {dim:'endpoint',tag:'Event 7045',txt:'System Event 7045 may record new service installation; system-log collection and retention depend on configuration'},
+    {dim:'forensics',tag:'Service config',txt:'Service start mode, image path, signer, account, and creation context can support investigation'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'medium',cb:'medium'},
+  timeline:[
+    {sensor:'Security Log',cls:'sensor',ev:'Event 4697 may record service installation when the required audit policy is active'},
+    {sensor:'System Log',cls:'sensor',ev:'Event 7045 may record a newly installed service'},
+    {sensor:'EDR',cls:'edr',ev:'Configured analytics may correlate service configuration with file signer and process ancestry'},
+  ],
+  why:'A Windows service can launch in the background or at startup, making services a legitimate administration surface and a persistence target. This models persistent service configuration, distinct from PsExec’s temporary service used for one-time remote execution.',
+  alt:'Use an approved service-creation simulator in an isolated lab; verify service-install auditing, configuration review, and alert routing.',
+  refs:[
+    {label:'MITRE ATT&CK — T1543.003',url:'https://attack.mitre.org/techniques/T1543/003/'},
+    {label:'Microsoft Learn — Event 4697',url:'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4697'},
+    {label:'Microsoft Learn — System Event 7045',url:'https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/troubleshoot-unexpected-reboots-system-event-logs'},
+  ],
+},
+run_key: {
+  name:'Current-user Registry Run Key', phase:'persistence', mitre:'T1547.001',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server','dc'],
+  dims:{endpoint:5,network:0,identity:0,forensics:5},
+  triggers:[
+    {dim:'endpoint',tag:'Sysmon 13',txt:'Sysmon Event 13 may record current-user Run-key value changes when installed and configured'},
+    {dim:'endpoint',tag:'Event 4657',txt:'Registry auditing requires the applicable audit policy and a SACL on the registry object'},
+    {dim:'endpoint',tag:'Endpoint analytics',txt:'Run-key changes may be visible to registry or autorun monitoring when configured'},
+    {dim:'forensics',tag:'Autoruns', txt:'Registry and startup inventory tools may reveal configured Run-key values during review'},
+    {dim:'forensics',tag:'Registry', txt:'Registry entry persists — recoverable artifact in forensic acquisition'},
+  ],
+  edrs:{mde:'high',cs:'high',s1:'high',cb:'high'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Sysmon Event 13 may record registry-value changes when Sysmon is installed and the event is included'},
+    {sensor:'EDR',   cls:'edr',  ev:'Endpoint analytics may identify registry persistence behavior when supported and configured'},
+    {sensor:'SIEM',  cls:'siem', ev:'Persistence alert correlated with prior intrusion events'},
+    {sensor:'SOC',   cls:'soc',  ev:'Review and response depend on collected evidence and local workflow'},
+  ],
+  why:'Run-key changes can be visible to registry auditing, endpoint controls, and forensic tools when configured. Detection is not universal, and alternate persistence mechanisms have different prerequisites and telemetry rather than equivalent or guaranteed lower exposure.',
+  alt:'Use approved persistence simulations to verify registry, WMI, and image-load monitoring; compare the actual telemetry and prerequisites with the system owner.',
+},
+wmi_subscription: {
+  name:'WMI Event Subscription', phase:'persistence', mitre:'T1546.003',
+  confidence:'author-estimate', privReq:'wmi_subscription_rights', targets:['workstation','server','dc'],
+  dims:{endpoint:2,network:0,identity:0,forensics:2},
+  triggers:[
+    {dim:'endpoint',tag:'Sysmon 19',txt:'Sysmon Event 19 records WMI filter registration when Sysmon is installed and the event is included'},
+    {dim:'endpoint',tag:'Sysmon 20',txt:'Sysmon Event 20 records WMI consumer registration when Sysmon is installed and the event is included'},
+    {dim:'endpoint',tag:'Sysmon 21',txt:'Sysmon Event 21 records WMI filter-to-consumer binding when Sysmon is installed and the event is included'},
+    {dim:'forensics',tag:'WMI Repo', txt:'Subscription data is stored in the WMI repository and can be found through configured WMI telemetry or forensic analysis'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'none',cb:'none'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Sysmon Events 19-21 can record WMI filter, consumer, and binding activity when collected'},
+    {sensor:'IR',    cls:'soc',  ev:'WMI subscriptions may be discovered through configured WMI logs, repository inspection, or forensic analysis'},
+  ],
+  why:'WMI event subscriptions are represented in the WMI repository, while associated payloads or other artifacts may also exist elsewhere. Sysmon Events 19-21 can record registration activity when Sysmon is installed and events are included; other logging and response depend on configuration.',
+  alt:'Use a vendor-approved WMI persistence simulation in an isolated lab; verify registration events and repository artifacts.',
+},
+com_hijacking: {
+  name:'COM Hijacking (HKCU, user-writable)', phase:'persistence', mitre:'T1546.015',
+  confidence:'author-estimate', privReq:'local_user', targets:['workstation','server'],
+  dims:{endpoint:2,network:0,identity:0,forensics:3},
+  triggers:[
+    {dim:'endpoint',tag:'Sysmon 13',txt:'HKCU\\Software\\Classes\\CLSID\\{GUID} value created — uncommon but monitored'},
+    {dim:'endpoint',tag:'Sysmon 7', txt:'DLL loaded from HKCU COM path — image load event'},
+    {dim:'forensics',tag:'Registry',txt:'HKCU COM override entry visible in registry forensics'},
+  ],
+  edrs:{mde:'low',cs:'low',s1:'low',cb:'none'},
+  timeline:[
+    {sensor:'Sysmon',cls:'sensor',ev:'Sysmon 13: HKCU CLSID registry key created'},
+    {sensor:'Sysmon',cls:'sensor',ev:'Sysmon 7: DLL loaded from user-controlled COM path'},
+  ],
+  why:'Some per-user COM registration changes can be made without elevation, but the exact effect depends on the class lookup and consuming application. Registry, image-load, and process telemetry may help investigate; monitoring and privilege requirements vary.',
+  alt:'Use a controlled COM-registration simulation to validate registry and image-load auditing; do not infer low risk from a per-user location.',
+},
+};
+
+// ════════════════════════════════════════
+// ENGINE
+// ════════════════════════════════════════
+function getEnv() {
+  return {
+    edr:     document.getElementById('e-edr').value,
+    net:     document.getElementById('e-net').value,
+    id:      document.getElementById('e-id').value,
+    log:     document.getElementById('e-log').value,
+    host:    document.getElementById('e-host').value,
+    priv:    document.getElementById('e-priv').value,
+    time:    document.getElementById('e-time').value,
+    soc:     document.getElementById('e-soc').value,
+    fatigue: document.getElementById('e-fatigue').value,
+  };
+}
+
+function computeDims(tech, env) {
+  const edrM  = (MUL.edr[env.edr]  || MUL.edr.none).ep;
+  const logEp = (MUL.log[env.log]  || MUL.log.minimal).ep;
+  const logFo = (MUL.log[env.log]  || MUL.log.minimal).forensics;
+  const netM  = MUL.net[env.net]   || 0.1;
+  const idM   = MUL.id[env.id]     || 0.2;
+  const hostM = MUL.host[env.host] || 1.0;
+
+  return {
+    endpoint:  Math.min(5, (tech.dims.endpoint  || 0) * edrM  * logEp * hostM),
+    network:   Math.min(5, (tech.dims.network   || 0) * netM),
+    identity:  Math.min(5, (tech.dims.identity  || 0) * idM),
+    forensics: Math.min(5, (tech.dims.forensics || 0) * logFo * hostM),
+  };
+}
+
+function dimAvg(dims) {
+  return (dims.endpoint * 0.35 + dims.network * 0.20 + dims.identity * 0.30 + dims.forensics * 0.15);
+}
+
+function effectiveScore(dims) {
+  // Keep technical detection independent from staffing, time window, and alert fatigue.
+  return Math.min(5, dimAvg(dims));
+}
+
+function bucketScore(s) {
+  if (s < 1.0) return 1;
+  if (s < 2.0) return 2;
+  if (s < 3.2) return 3;
+  if (s < 4.2) return 4;
+  return 5;
+}
+
+function responseContext(env) {
+  // This illustrative SOC engagement factor is separate from technical sensor telemetry.
+  const soc = {none:0, weak:.35, moderate:.60, strong:.82, elite:1}[env.soc] ?? 0;
+  const time = {business:1, after:.78, weekend:.62}[env.time] ?? 1;
+  const fatigue = {low:1, medium:.86, high:.72}[env.fatigue] ?? 1;
+  return soc * time * fatigue;
+}
+
+function computeDebt(steps, env) {
+  const ids = steps.filter(s => s.tech && T[s.tech]).map(s => s.tech);
+  if (!ids.length) return 0;
+  let debt = 0;
+  ids.forEach(id => {
+    const dims = computeDims(T[id], env);
+    debt += dimAvg(dims) * 9;
+  });
+  CORRELATIONS.forEach(c => {
+    if (c.contains.every(id => ids.includes(id))) debt += c.debtAdd;
+  });
+  // Keep a sensor-visibility baseline; SOC context adjusts only this operational-exposure gauge.
+  const environmentFactor = .65 + .35 * responseContext(env);
+  return Math.min(100, Math.round(debt * environmentFactor));
+}
+
+function debtLabel(d) {
+  if (d < 15) return {word:'Minimal', col:'#22c55e'};
+  if (d < 30) return {word:'Manageable', col:'#86efac'};
+  if (d < 50) return {word:'Elevated', col:'#eab308'};
+  if (d < 70) return {word:'Critical', col:'#f97316'};
+  return {word:'Blown', col:'#ef4444'};
+}
+
+function dimColor(v) {
+  if (v < 1.5) return '#6366f1';
+  if (v < 2.5) return '#22c55e';
+  if (v < 3.5) return '#eab308';
+  if (v < 4.2) return '#f97316';
+  return '#ef4444';
+}
+
+// ════════════════════════════════════════
+// SOC response estimate; telemetry timing remains independent of response
+// ════════════════════════════════════════
+function tlTimings(env) {
+  // Telemetry events occur independently of SOC staffing and alert fatigue.
+  const telemetry = [0, 1, 3, 5];
+  const responseBase = { elite:6, strong:15, moderate:45, weak:240, none:null };
+  const timeFactor = { business:1, after:2, weekend:4 }[env.time] || 1;
+  const fatigueFactor = { low:1, medium:1.5, high:2.5 }[env.fatigue] || 1;
+  const response = responseBase[env.soc] == null ? null : responseBase[env.soc] * timeFactor * fatigueFactor;
+  return { telemetry, response };
+}
+
+function formatTime(minutes) {
+  if (minutes == null) return 'No response';
+  return `T+${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}`;
+}
+
+// ════════════════════════════════════════
+// SCORE / COLOR PRESETS
+// ════════════════════════════════════════
+const PRESETS = {
+  lab:  {edr:'none',net:'none',id:'none',log:'minimal',host:'workstation',priv:'local_admin',time:'business',soc:'none',fatigue:'low'},
+  corp: {edr:'sysmon',net:'basic',id:'basic',log:'sysmon',host:'workstation',priv:'domain_user',time:'business',soc:'weak',fatigue:'medium'},
+  mde:  {edr:'mde',net:'ngfw',id:'mdi',log:'siem',host:'workstation',priv:'domain_user',time:'business',soc:'moderate',fatigue:'medium'},
+  cs:   {edr:'cs',net:'ngfw',id:'mdi',log:'siem',host:'server',priv:'domain_user',time:'business',soc:'strong',fatigue:'low'},
+  mdr:  {edr:'mdr',net:'pcap',id:'full',log:'siem',host:'dc',priv:'da',time:'business',soc:'elite',fatigue:'low'},
+};
+
+function applyPreset(key) {
+  const p = PRESETS[key]; if (!p) return;
+  Object.entries(p).forEach(([k,v]) => {
+    const el = document.getElementById('e-'+k); if (el) el.value = v;
+  });
+  ['lab','corp','mde','cs','mdr'].forEach(k => {
+    document.getElementById('pr-'+k).classList.toggle('sel', k===key);
+  });
+  envChanged();
+}
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let steps = [];
+let uid = 0;
+let currentTab = 'build';
+
+// ════════════════════════════════════════
+// TAB
+// ════════════════════════════════════════
+function setTab(t) {
+  const next=t==='dv'?'dv':'build';
+  const previous=currentTab;
+  currentTab=next;
+  const isDefender=next==='dv';
+  const buildButton=document.getElementById('tab-build');
+  const defenderButton=document.getElementById('tab-dv');
+  const buildPanel=document.getElementById('buildTab');
+  const defenderPanel=document.getElementById('dvTab');
+  buildButton.classList.toggle('active',!isDefender);
+  defenderButton.classList.toggle('active',isDefender);
+  buildButton.setAttribute('aria-selected',String(!isDefender));
+  defenderButton.setAttribute('aria-selected',String(isDefender));
+  buildButton.tabIndex=isDefender?-1:0;
+  defenderButton.tabIndex=isDefender?0:-1;
+  buildPanel.hidden=isDefender;
+  defenderPanel.hidden=!isDefender;
+  defenderPanel.classList.toggle('active',isDefender);
+  if(isDefender)renderDefenderView();
+  if(previous!==next&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    const incoming=isDefender?defenderPanel:buildPanel;
+    const startX=isDefender?22:-22;
+    incoming.animate([
+      {opacity:0,transform:`translateX(${startX}px)`},
+      {opacity:1,transform:'translateX(0)'}
+    ],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
+  }
+}
+function navigateAnalysisTabs(event) {
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const current=event.currentTarget.id==='tab-dv'?'dv':'build';
+  const target=event.key==='Home'?'build':event.key==='End'?'dv':event.key==='ArrowRight'?(current==='build'?'dv':'build'):(current==='dv'?'build':'dv');
+  setTab(target);
+  document.getElementById(target==='dv'?'tab-dv':'tab-build').focus();
+}
+
+// ENV PANEL
+// ════════════════════════════════════════
+function envChanged() {
+  updateEnvSummary();
+  render();
+  ['lab','corp','mde','cs','mdr'].forEach(k => {
+    document.getElementById('pr-'+k).classList.remove('sel');
+  });
+}
+
+function updateEnvSummary() {
+  const e = getEnv();
+  const edrLabels = {none:'No EDR',defender:'Defender',sysmon:'Sysmon',mde:'MDE',cs:'CrowdStrike',s1:'SentinelOne',mdr:'MDR'};
+  const socLabels = {none:'No SOC',weak:'Weak SOC',moderate:'Moderate SOC',strong:'Strong SOC',elite:'Elite MDR'};
+  document.getElementById('envSummary').textContent =
+    `${edrLabels[e.edr]||e.edr} · ${socLabels[e.soc]||e.soc} · ${e.host} · ${PRIV_LABELS[e.priv]||e.priv}`;
+}
+
+// ════════════════════════════════════════
+// RENDER STEPS
+// ════════════════════════════════════════
+function byPhase(ph) {
+  return Object.entries(T).filter(([,v])=>v.phase===ph).map(([id,v])=>({id,...v}));
+}
+
+function renderSteps() {
+  const c = document.getElementById('stepRows'); c.innerHTML='';
+  steps.forEach((s,i) => {
+    const row = document.createElement('div'); row.className='step-row';
+    const num = document.createElement('div'); num.className='step-num'; num.textContent=(i+1)+'.';
+    const phSel = document.createElement('select'); phSel.className='sel-phase';
+    phSel.innerHTML='<option value="">Phase…</option>'+
+      Object.entries(PHASES).map(([k,v])=>`<option value="${k}"${s.phase===k?' selected':''}>${v}</option>`).join('');
+    phSel.onchange=()=>{steps[i].phase=phSel.value;steps[i].tech='';render();};
+    const techSel = document.createElement('select'); techSel.className='sel-tech';
+    const opts = s.phase ? byPhase(s.phase) : [];
+    techSel.innerHTML='<option value="">Technique…</option>'+
+      opts.map(t=>`<option value="${t.id}"${s.tech===t.id?' selected':''}>${t.name}</option>`).join('');
+    techSel.onchange=()=>{steps[i].tech=techSel.value;render();};
+    const rm=document.createElement('button'); rm.className='btn-rm'; rm.textContent='✕';
+    rm.onclick=()=>{steps.splice(i,1);render();};
+    row.appendChild(num); row.appendChild(phSel); row.appendChild(techSel); row.appendChild(rm);
+    c.appendChild(row);
+  });
+}
+
+// ════════════════════════════════════════
+// RENDER METER
+// ════════════════════════════════════════
+function renderMeter() {
+  const env = getEnv();
+  const sel = steps.filter(s=>s.tech&&T[s.tech]);
+  const empty=document.getElementById('meterEmpty'), active=document.getElementById('meterActive');
+  if (!sel.length){empty.style.display='block';active.style.display='none';return;}
+  empty.style.display='none'; active.style.display='block';
+
+  // Per-dimension max across selected techniques
+  let maxDims = {endpoint:0,network:0,identity:0,forensics:0};
+  let maxEff=0, worstTech=null, worstEff=0;
+  sel.forEach(s=>{
+    const dims=computeDims(T[s.tech],env);
+    maxDims.endpoint  = Math.max(maxDims.endpoint,  dims.endpoint);
+    maxDims.network   = Math.max(maxDims.network,   dims.network);
+    maxDims.identity  = Math.max(maxDims.identity,  dims.identity);
+    maxDims.forensics = Math.max(maxDims.forensics, dims.forensics);
+    const eff=effectiveScore(dims);
+    if(eff>worstEff){worstEff=eff;worstTech=T[s.tech];}
+  });
+  maxEff = worstEff;
+
+  const bucket = bucketScore(maxEff);
+  const info = SM[bucket];
+
+  // Signal blocks
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('sb'+i);
+    el.className=`sb sb${i}${i<=bucket?' on':''}`;
+  }
+  document.getElementById('mEmoji').textContent=info.emoji;
+  const mw=document.getElementById('mWord'); mw.textContent=info.word; mw.style.color=info.col;
+  document.getElementById('mEffective').textContent=`Technical signal: ${maxEff.toFixed(1)}/5.0`;
+
+  // Dim bars
+  const dims4 = [{k:'Endpoint',id:'Endpoint'},{k:'Network',id:'Network'},{k:'Identity',id:'Identity'},{k:'Forensics',id:'Forensics'}];
+  dims4.forEach(({k,id})=>{
+    const rawKey=k.toLowerCase();
+    const v=maxDims[rawKey]; const col=dimColor(v);
+    document.getElementById('dv'+id).textContent=v.toFixed(1);
+    const f=document.getElementById('df'+id);
+    f.style.width=(v/5*100)+'%'; f.style.background=col;
+  });
+
+  // Debt
+  const debt=computeDebt(steps,env);
+  const dl=debtLabel(debt);
+  const dw=document.getElementById('debtWord'); dw.textContent=dl.word; dw.style.color=dl.col;
+  const df=document.getElementById('debtFill'); df.style.width=debt+'%';
+  df.style.background=debt<30?'#22c55e':debt<60?'#eab308':'#ef4444';
+  document.getElementById('debtNum').textContent=`${debt}/100 — sensor visibility + SOC context (illustrative)`;
+
+  // Weakest
+  const chips=sel.map(s=>{
+    const t=T[s.tech]; const d=computeDims(t,env); const eff=effectiveScore(d);
+    const b=bucketScore(eff); const si=SM[b];
+    const bg={1:'rgba(99,102,241,.15)',2:'rgba(34,197,94,.12)',3:'rgba(234,179,8,.12)',4:'rgba(249,115,22,.12)',5:'rgba(239,68,68,.15)'}[b];
+    return `<span class="ns-chip" style="color:${si.col};border-color:${si.col}30;background:${bg}">${si.emoji} ${t.name}</span>`;
+  }).join('');
+  document.getElementById('weakestRow').innerHTML=
+    worstTech ? `Weakest link: <code>${worstTech.name}</code><div class="noise-strip">${chips}</div>` : '';
+
+  // Correlations
+  const ids=steps.filter(s=>s.tech).map(s=>s.tech);
+  const matched=CORRELATIONS.filter(c=>c.contains.every(id=>ids.includes(id)));
+  const ca=document.getElementById('corrAlerts'); ca.innerHTML='';
+  matched.forEach(c=>{
+    const div=document.createElement('div'); div.className=`corr-card ${c.sev}`;
+    const icons={crit:'🚨',high:'⚠️',med:'ℹ️'};
+    div.innerHTML=`<div class="corr-hdr"><span class="corr-icon">${icons[c.sev]||'⚠️'}</span>
+      <span class="corr-name">${c.label}</span>
+      <span class="corr-debt">+${c.debtAdd} debt</span></div>
+      <div class="corr-note">${c.note}</div>`;
+    ca.appendChild(div);
+  });
+}
+
+// ════════════════════════════════════════
+// RENDER CARDS
+// ════════════════════════════════════════
+function edrCls(l){return{high:'edr-high',medium:'edr-med',low:'edr-low',none:'edr-none'}[l]||'edr-none';}
+
+const PRIV_HAS = {
+  local_user:['none','local_user'],
+  local_admin:['none','local_user','local_admin'],
+  domain_user:['none','local_user','domain_user'],
+  da:['none','local_user','domain_user','da'],
+  system:['none','local_user','system'],
+};
+function environmentFit(t, env) {
+  const notes = [];
+  if (['ad_replication','krbtgt_key','service_key','credential_material','ticket_material','rdp_access','wmi_subscription_rights','remote_wmi','remote_dcom','winrm_access'].includes(t.privReq)) {
+    notes.push(`The selected OS privilege level cannot confirm whether ${PRIV_LABELS[t.privReq]} are assigned; verify this requirement separately.`);
+  } else if (!(PRIV_HAS[env.priv] || []).includes(t.privReq)) {
+    notes.push(`Selected privilege (${PRIV_LABELS[env.priv] || env.priv}) does not explicitly satisfy the technique minimum (${PRIV_LABELS[t.privReq] || t.privReq}).`);
+  }
+  if (env.host === 'cloud') {
+    notes.push('Cloud workload coverage is not validated for this technique.');
+  } else if (t.targets && !t.targets.includes(env.host)) {
+    notes.push(`Technique target data does not include ${env.host}.`);
+  }
+  return notes.join(' ');
+}
+function renderCards() {
+  const guidancePanel=document.getElementById('safeGuidanceReview');
+  if (guidancePanel) guidancePanel.hidden=true;
+  const env=getEnv();
+  const cw=document.getElementById('cardsWrap'); cw.innerHTML='';
+  const sel=steps.filter(s=>s.tech&&T[s.tech]);
+  if (!sel.length) {
+    cw.innerHTML='<div class="dv-empty">Choose a phase and technique in the operation editor above to see the attacker breakdown.</div>';
+    return;
+  }
+
+  const lbl=document.createElement('div'); lbl.className='slabel'; lbl.style.marginBottom='10px';
+  lbl.textContent='Technique breakdown'; cw.appendChild(lbl);
+
+  const wrap=document.createElement('div'); wrap.className='cards';
+  sel.forEach(s=>{
+    const t=T[s.tech];
+    const dims=computeDims(t,env);
+    const eff=effectiveScore(dims);
+    const bucket=bucketScore(eff);
+    const info=SM[bucket];
+    const card=document.createElement('div');
+    card.className=`tcard ${info.cls}`;
+
+    const confidence = confidenceMeta(t.confidence);
+    const confCls = confidence.cls;
+    const confLabel = confidence.label;
+    const privLabel = PRIV_LABELS[t.privReq]||t.privReq||'—';
+    const fitNote = environmentFit(t,env);
+
+    // Dimension bars inside card
+    const dimBarHtml = ['endpoint','network','identity','forensics'].map(k=>{
+      const v=dims[k]; const col=dimColor(v);
+      return `<div class="cdim-row">
+        <div class="cdim-label"><span class="cdim-name">${k.charAt(0).toUpperCase()+k.slice(1)}</span><span class="cdim-val">${v.toFixed(1)}</span></div>
+        <div class="cdim-track"><div class="cdim-fill" style="width:${v/5*100}%;background:${col}"></div></div>
+      </div>`;
+    }).join('');
+
+    // Triggers grouped by dimension
+    const dimCol2 = {endpoint:DIM_COLS.endpoint, network:DIM_COLS.network, identity:DIM_COLS.identity, forensics:DIM_COLS.forensics};
+    const trigHtml=(t.triggers||[]).map(tr=>`
+      <div class="trig-row">
+        <span class="trig-dot" style="background:${dimCol2[tr.dim]||'#6366f1'}"></span>
+        <span class="trig-tag">${tr.tag}</span>
+        <span class="trig-txt">${tr.txt}</span>
+      </div>`).join('');
+
+    const edrHtml=Object.entries(t.edrs||{}).map(([k,v])=>{
+      const labels={mde:'Microsoft MDE',cs:'CrowdStrike Falcon',s1:'SentinelOne',cb:'Carbon Black'};
+      return `<div class="edr-row"><span class="edr-name">${labels[k]||k}</span>
+        <span class="edr-chip ${edrCls(v)}">${v.toUpperCase()}</span></div>`;
+    }).join('');
+
+    card.innerHTML=`
+      <div class="tcard-head">
+        <div class="tcard-cmd">${t.name}</div>
+        <div class="tcard-meta">
+          ${t.mitre?`<a class="mitre-tag" href="https://attack.mitre.org/techniques/${t.mitre.replace(/\./g,'/')}/" target="_blank" rel="noopener noreferrer">${t.mitre}</a>`:''}
+          <span class="conf-tag ${confCls}">${confLabel}</span>
+          <span class="priv-tag">${privLabel}</span>
+          <span class="score-pill ${info.pill}">${info.emoji} ${info.word} (${eff.toFixed(1)})</span>
+        </div>
+      </div>
+      ${fitNote ? `<div class="fit-note">Environment note: ${fitNote}</div>` : ''}
+      <div class="tcard-why">${t.why}</div>
+      <div class="card-dims">${dimBarHtml}</div>
+      <div class="tcard-body">
+        <div class="tcard-col">
+          <div class="col-head">What it triggers</div>
+          ${trigHtml}
+        </div>
+        <div class="tcard-col">
+          <div class="col-head">Illustrative EDR detection likelihood</div>
+          ${edrHtml}
+        </div>
+      </div>
+      ${t.alt?`<div class="tcard-alt">
+        <div class="alt-label">Safe validation guidance</div>
+        <div class="alt-text">${t.alt}</div>
+      </div>`:''}
+      ${(t.refs||[]).length?`<details class="tcard-refs"><summary>References and mapping</summary><div class="tcard-ref-list">${t.refs.map(ref=>`<a href="${ref.url}" target="_blank" rel="noopener noreferrer">${ref.label}</a>`).join('')}</div></details>`:''}
+    `;
+    wrap.appendChild(card);
+  });
+  cw.appendChild(wrap);
+}
+
+// ════════════════════════════════════════
+// RENDER DEFENDER VIEW TAB
+// ════════════════════════════════════════
+function renderDefenderView() {
+  const env=getEnv();
+  const sel=steps.filter(s=>s.tech&&T[s.tech]);
+  const dvContent=document.getElementById('dvContent');
+  if (!sel.length){
+    dvContent.innerHTML='<div class="dv-empty">Choose a phase and technique in the operation editor above. Times are illustrative estimates, not measured response guarantees.</div>';
+    return;
+  }
+
+  const timings=tlTimings(env);
+  // Collect all timeline events across all techniques with relative timestamps
+  let allEvents=[];
+  sel.forEach(s=>{
+    const t=T[s.tech];
+    (t.timeline||[]).forEach((item,i)=>{
+      const minute = item.cls === 'soc' ? timings.response : timings.telemetry[Math.min(i,timings.telemetry.length-1)];
+      if (!(item.cls === 'soc' && minute === null)) {
+        allEvents.push({...item, tech:t.name, timing:formatTime(minute), sortKey:minute == null ? Infinity : minute});
+      }
+    });
+  });
+  // Sort by timing
+  allEvents.sort((a,b)=>a.sortKey-b.sortKey);
+
+  const actorCols={sensor:'#a5b4fc',edr:'#fca5a5',siem:'#fde68a',soc:'#86efac'};
+  const html=allEvents.map(ev=>{
+    const col=actorCols[ev.cls]||'#6366f1';
+    return `<div class="dv-tl-item">
+      <div class="dv-tl-time">${ev.timing}</div>
+      <div class="dv-tl-dot" style="background:${col}"></div>
+      <div class="dv-tl-right">
+        <div class="dv-tl-actor" style="color:${col}">${ev.sensor}</div>
+        <div class="dv-tl-ev">${ev.ev}</div>
+        <div class="dv-tl-tech">${ev.tech}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  dvContent.innerHTML=`<div class="dv-timeline-wrap">${html}</div>`;
+}
+
+// ════════════════════════════════════════
+// SAFE TEST GUIDANCE
+// ════════════════════════════════════════
+function showSafeGuidance() {
+  const selected=steps.filter(s=>s.tech&&T[s.tech]);
+  const btn=document.querySelector('.btn-quieter');
+  if (!selected.length) {
+    btn.textContent='Add a technique to see options';
+    setTimeout(()=>btn.textContent='🛡️ Review safer test options',2200);
+    return;
+  }
+  if (currentTab==='dv') setTab('build');
+  const panel=document.getElementById('safeGuidanceReview');
+  panel.replaceChildren();
+  const heading=document.createElement('div');
+  heading.className='slabel';
+  heading.id='safeGuidanceTitle';
+  heading.textContent='Safer validation options';
+  const intro=document.createElement('p');
+  intro.className='safe-guidance-intro';
+  intro.textContent='Use these scoped, benign validation approaches to review telemetry and controls with the system owners.';
+  const list=document.createElement('div');
+  list.className='safe-guidance-list';
+  selected.forEach(step=>{
+    const tech=T[step.tech];
+    const item=document.createElement('article');
+    item.className='safe-guidance-item';
+    const name=document.createElement('strong');
+    name.textContent=tech.name;
+    const detail=document.createElement('p');
+    detail.textContent=tech.alt||'No technique-specific validation guidance is available; agree on a safe test procedure with the system owner.';
+    item.append(name,detail);
+    list.appendChild(item);
+  });
+  panel.append(heading,intro,list);
+  panel.hidden=false;
+  document.querySelectorAll('.tcard-alt').forEach(note=>note.classList.add('guidance-highlight'));
+  panel.scrollIntoView({behavior:'smooth',block:'center'});
+  panel.focus({preventScroll:true});
+  btn.textContent='Safer test options shown';
+  setTimeout(()=>btn.textContent='🛡️ Review safer test options',2200);
+}
+
+// ════════════════════════════════════════
+// GUIDE DIALOG
+const guideDialog=document.getElementById('guideDialog');
+const guideTrigger=document.getElementById('guideTrigger');
+const guideClose=document.getElementById('guideClose');
+const guideTabs=Array.from(document.querySelectorAll('.guide-tab'));
+const guidePanels=Array.from(document.querySelectorAll('.guide-panel'));
+function setGuideSection(id,focusTab=false,animate=true){
+  const previousId=guideTabs.find(tab=>tab.getAttribute('aria-selected')==='true')?.dataset.guideTab;
+  const previousIndex=guideTabs.findIndex(tab=>tab.dataset.guideTab===previousId);
+  const nextIndex=guideTabs.findIndex(tab=>tab.dataset.guideTab===id);
+  const slideClass=nextIndex>=previousIndex?'guide-slide-forward':'guide-slide-back';
+  guideTabs.forEach(tab=>{
+    const active=tab.dataset.guideTab===id;
+    tab.setAttribute('aria-selected',String(active));
+    tab.tabIndex=active?0:-1;
+    if(active&&focusTab)tab.focus();
+  });
+  guidePanels.forEach(panel=>{
+    panel.classList.remove('guide-slide-forward','guide-slide-back');
+    const active=panel.dataset.guidePanel===id;
+    panel.hidden=!active;
+    if(active&&animate&&previousId!==id)panel.classList.add(slideClass);
+  });
+}
+guideTabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>setGuideSection(tab.dataset.guideTab));
+  tab.addEventListener('keydown',event=>{
+    let next=index;
+    if(event.key==='ArrowRight')next=(index+1)%guideTabs.length;
+    else if(event.key==='ArrowLeft')next=(index-1+guideTabs.length)%guideTabs.length;
+    else if(event.key==='Home')next=0;
+    else if(event.key==='End')next=guideTabs.length-1;
+    else return;
+    event.preventDefault();
+    setGuideSection(guideTabs[next].dataset.guideTab,true);
+  });
+});
+guideTrigger.addEventListener('click',()=>{
+  setGuideSection('about',false,false);
+  guideDialog.showModal();
+  guideTabs[0].focus();
+});
+guideClose.addEventListener('click',()=>guideDialog.close());
+guideDialog.addEventListener('click',event=>{if(event.target===guideDialog)guideDialog.close();});
+guideDialog.addEventListener('close',()=>guideTrigger.focus());
+// MASTER RENDER
+// ════════════════════════════════════════
+function render() {
+  renderSteps(); renderMeter(); renderCards();
+  if (currentTab==='dv') renderDefenderView();
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+document.getElementById('btnAdd').onclick=()=>{
+  steps.push({id:uid++,phase:'',tech:''}); render();
+};
+document.getElementById('buildTab').style.display='';
+
+applyPreset('lab');
+updateEnvSummary();
+steps.push({id:uid++,phase:'',tech:''});
+render();
+
+function syncTopPanelHeights() {
+  const envPanel=document.querySelector('.env-panel');
+  const operationPanel=document.querySelector('.operation-panel');
+  if (!envPanel || !operationPanel) return;
+  if (window.matchMedia('(min-width:1181px)').matches) {
+    operationPanel.style.height=`${envPanel.getBoundingClientRect().height}px`;
+  } else {
+    operationPanel.style.height='';
+  }
+}
+window.addEventListener('resize',syncTopPanelHeights,{passive:true});
+if ('ResizeObserver' in window) {
+  const panelHeightObserver=new ResizeObserver(syncTopPanelHeights);
+  panelHeightObserver.observe(document.querySelector('.env-panel'));
+}
+syncTopPanelHeights();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
